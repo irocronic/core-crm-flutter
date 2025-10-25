@@ -1,0 +1,19 @@
+# build.yaml
+# Bu yapılandırma, farklı kod üreticilerinin (builder) hangi dosyalarda çalışacağını kontrol eder.
+# Bu özel durumda, retrofit_generator'ın model dosyalarını taramasını engelleyerek
+# json_serializable ile çakışmasını önlüyoruz.
+
+targets:
+  $default:
+    builders:
+      retrofit_generator:
+        generate_for:
+          # Sadece API servis/arayüz dosyalarını dahil et (projenizde varsa).
+          # Eğer projenizde @RestApi kullanan bir dosya yoksa, bu ayar
+          # retrofit_generator'ın gereksiz yere çalışmasını engeller.
+          include:
+            - 'lib/features/**/services/*.dart'
+            - 'lib/features/**/datasources/*.dart'
+          # Model dosyalarını bu generator için kesinlikle hariç tut.
+          exclude:
+            - 'lib/**/models/*.dart'

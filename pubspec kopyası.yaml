@@ -1,0 +1,97 @@
+name: flutter_realtyflow_crm
+description: Modern Gayrimenkul CRM Uygulaması
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ✅ Localization - SDK'dan eklendi
+  flutter_localizations:
+    sdk: flutter
+
+  # Web support
+  universal_html: ^2.2.4
+
+  # State Management
+  provider: ^6.1.1
+
+  # Networking
+  dio: ^5.4.0
+  retrofit: ^4.0.3
+  json_annotation: ^4.9.0
+  connectivity_plus: ^5.0.2
+  analyzer: ^8.4.0
+  google_fonts: ^6.2.1
+
+  # Storage
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.2
+
+  # UI Components
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.0
+  shimmer: ^3.0.0
+  fl_chart: ^0.66.0
+  table_calendar: ^3.0.9
+  image_picker: ^1.0.7
+
+  # Utilities
+  intl: ^0.20.2
+  logger: ^2.0.2
+  freezed_annotation: ^3.1.0
+  equatable: ^2.0.5
+
+  # Navigation
+  go_router: ^13.0.0
+  cupertino_icons: ^1.0.6
+
+  # Firebase
+  firebase_core: ^2.32.0
+  firebase_messaging: ^14.9.4
+  
+  # Device Info
+  device_info_plus: ^10.1.0
+
+  # 🔥 YENİ EKLENENLER - Contract Yönetimi İçin
+  
+  # URL Launcher (PDF Açma)
+  url_launcher: ^6.2.4
+  
+  # Path Provider (Dosya Kaydetme)
+  path_provider: ^2.1.2
+  
+  # Permission Handler (Dosya İzinleri)
+  permission_handler: ^11.3.0
+  
+  # File Picker (Dosya Seçme - Opsiyonel)
+  file_picker: ^6.1.1
+  csv: ^6.0.0
+  syncfusion_flutter_datagrid: ^26.1.35
+  
+  # PDF Viewer (PDF Görüntüleme - Opsiyonel)
+  flutter_pdfview: ^1.3.2
+  
+  # Share Plus (PDF Paylaşma - Opsiyonel)
+  share_plus: ^7.2.2
+  
+  # Open File (Dosya Açma - Opsiyonel)
+  open_file: ^3.3.2
+  
+  dartz: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.11
+  json_serializable: ^6.7.1
+  retrofit_generator: ^10.0.6
+  freezed: ^3.2.3
+
+flutter:
+  uses-material-design: true

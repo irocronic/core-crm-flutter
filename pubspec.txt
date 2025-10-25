@@ -1,0 +1,44 @@
+name: flutter_realtyflow_crm
+description: Modern Gayrimenkul CRM Uygulaması
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  provider: ^6.1.1
+  dio: ^5.4.0
+  retrofit: ^4.0.3
+  json_annotation: ^4.9.0
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.2
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.0
+  shimmer: ^3.0.0
+  fl_chart: ^0.66.0
+  table_calendar: ^3.0.9
+  intl: ^0.19.0
+  logger: ^2.0.2
+  freezed_annotation: ^2.4.1
+  equatable: ^2.0.5
+  go_router: ^13.0.0
+  cupertino_icons: ^1.0.6
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.9
+  device_info_plus: ^10.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+  retrofit_generator: ^8.0.6
+  freezed: ^2.4.6
+
+flutter:
+  uses-material-design: true
