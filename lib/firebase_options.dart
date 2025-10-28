@@ -41,48 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBHV3lmkZBV4arXDY46FJkiL62u3fgZlN8',
-    appId: '1:187898452816:web:271b889dbf27e439b5aa55',
-    messagingSenderId: '187898452816',
-    projectId: 'joinz-app',
-    authDomain: 'joinz-app.firebaseapp.com',
-    storageBucket: 'joinz-app.firebasestorage.app',
-    measurementId: 'G-XZB1K1TEZH',
+    apiKey: 'AIzaSyBqJXGYDkgX1v1bSMTiFNuWTVOunJkXg9Q',
+    appId: '1:130537228101:web:fcb29ef5821b329b8e202c',
+    messagingSenderId: '130537228101',
+    projectId: 'core-crm-e7484',
+    authDomain: 'core-crm-e7484.firebaseapp.com',
+    storageBucket: 'core-crm-e7484.firebasestorage.app',
+    measurementId: 'G-PG88TEW9W5',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCj4vG7vhNwkrWiLrlmdIv3PMAdbD_jReo',
-    appId: '1:187898452816:android:e525401383109935b5aa55',
-    messagingSenderId: '187898452816',
-    projectId: 'joinz-app',
-    storageBucket: 'joinz-app.firebasestorage.app',
+    apiKey: 'AIzaSyD_1AMRnxkiMLlqu29zfWV0PiO3zCFhDJY',
+    appId: '1:130537228101:android:686643fed210eefa8e202c',
+    messagingSenderId: '130537228101',
+    projectId: 'core-crm-e7484',
+    storageBucket: 'core-crm-e7484.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAcBJblNuMo99u1L6R0TTqCJER3gwQ3Oi4',
-    appId: '1:187898452816:ios:065287eeb66016e2b5aa55',
-    messagingSenderId: '187898452816',
-    projectId: 'joinz-app',
-    storageBucket: 'joinz-app.firebasestorage.app',
+    apiKey: 'AIzaSyAU_rum3t-BQKY5tBfIM5EgH-XEuueU8CY',
+    appId: '1:130537228101:ios:1823ca0938ff2fae8e202c',
+    messagingSenderId: '130537228101',
+    projectId: 'core-crm-e7484',
+    storageBucket: 'core-crm-e7484.firebasestorage.app',
     iosBundleId: 'com.example.flutterRealtyflowCrm',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAcBJblNuMo99u1L6R0TTqCJER3gwQ3Oi4',
-    appId: '1:187898452816:ios:065287eeb66016e2b5aa55',
-    messagingSenderId: '187898452816',
-    projectId: 'joinz-app',
-    storageBucket: 'joinz-app.firebasestorage.app',
+    apiKey: 'AIzaSyAU_rum3t-BQKY5tBfIM5EgH-XEuueU8CY',
+    appId: '1:130537228101:ios:1823ca0938ff2fae8e202c',
+    messagingSenderId: '130537228101',
+    projectId: 'core-crm-e7484',
+    storageBucket: 'core-crm-e7484.firebasestorage.app',
     iosBundleId: 'com.example.flutterRealtyflowCrm',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBHV3lmkZBV4arXDY46FJkiL62u3fgZlN8',
-    appId: '1:187898452816:web:2e696c339e44f37eb5aa55',
-    messagingSenderId: '187898452816',
-    projectId: 'joinz-app',
-    authDomain: 'joinz-app.firebaseapp.com',
-    storageBucket: 'joinz-app.firebasestorage.app',
-    measurementId: 'G-K6JK9WJ5RL',
+    apiKey: 'AIzaSyBqJXGYDkgX1v1bSMTiFNuWTVOunJkXg9Q',
+    appId: '1:130537228101:web:24e55d96f15d5f8c8e202c',
+    messagingSenderId: '130537228101',
+    projectId: 'core-crm-e7484',
+    authDomain: 'core-crm-e7484.firebaseapp.com',
+    storageBucket: 'core-crm-e7484.firebasestorage.app',
+    measurementId: 'G-W8D7VHETHN',
   );
+
 }

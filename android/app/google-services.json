@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "130537228101",
+    "project_id": "core-crm-e7484",
+    "storage_bucket": "core-crm-e7484.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:130537228101:android:686643fed210eefa8e202c",
+        "android_client_info": {
+          "package_name": "com.example.flutter_realtyflow_crm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_1AMRnxkiMLlqu29zfWV0PiO3zCFhDJY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
