@@ -20,130 +20,115 @@ class PropertyCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            Container(
-              height: 180,
-              width: double.infinity,
-              color: Colors.grey[300],
-              child: property.thumbnail != null
-                  ? Image.network(
-                property.thumbnail!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Center(
-                    child: Icon(Icons.home_work, size: 60),
-                  );
-                },
-              )
-                  : const Center(
-                child: Icon(Icons.home_work, size: 60),
+        // GÖRSEL KALDIRILDIĞI İÇİN ARTIK Column'a GEREK YOK, Direkt Padding olabilir.
+        // Ama yapıyı bozmamak adına Column kalabilir.
+        child: Padding( // Column yerine direkt Padding kullanıldı
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: property.statusColor,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: property.statusColor.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  property.statusDisplay ?? property.status,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
-            ),
 
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 8),
+
+              // Project Name
+              Text(
+                property.project.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              const SizedBox(height: 4),
+
+              // Address
+              Text(
+                '${property.block} Blok - Kat: ${property.floor} - No: ${property.unitNumber}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              const SizedBox(height: 8),
+
+              // Details Row
+              Wrap( // Row yerine Wrap kullanmak daha esnek olabilir
+                spacing: 8,
+                runSpacing: 4,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: property.statusColor,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: property.statusColor.withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      property.statusDisplay ?? property.status,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                  _buildTag(
+                    icon: Icons.meeting_room,
+                    label: property.roomCount,
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // Project Name - GÜNCELLENDİ
-                  Text(
-                    property.project.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  _buildTag(
+                    icon: Icons.straighten,
+                    label: '${property.netAreaM2.toStringAsFixed(0)} m²',
                   ),
-
-                  const SizedBox(height: 4),
-
-                  // Address
-                  Text(
-                    '${property.block} Blok - Kat: ${property.floor} - No: ${property.unitNumber}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Details Row
-                  Row(
-                    children: [
-                      _buildTag(
-                        icon: Icons.meeting_room,
-                        label: property.roomCount,
-                      ),
-                      const SizedBox(width: 8),
-                      _buildTag(
-                        icon: Icons.straighten,
-                        label: '${property.netAreaM2.toStringAsFixed(0)} m²',
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Price
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        CurrencyFormatter.format(property.cashPrice),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                    ],
+                  // Cephe bilgisini de ekleyelim
+                  _buildTag(
+                    icon: Icons.explore_outlined, // Veya uygun bir ikon
+                    label: property.facadeDisplay ?? property.facade,
                   ),
                 ],
               ),
-            ),
-          ],
+
+              const SizedBox(height: 12),
+
+              // Price
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    CurrencyFormatter.format(property.cashPrice),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+              //     ],
+              //   ),
+              // ),
+            ],
+          ),
         ),
       ),
     );

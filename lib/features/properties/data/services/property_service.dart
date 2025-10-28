@@ -1,595 +1,664 @@
 // lib/features/properties/data/services/property_service.dart
-import 'package:dio/dio.dart'; // [cite: 1331]
-import 'package:flutter/foundation.dart'; // [cite: 1331]
-import 'package:image_picker/image_picker.dart'; // [cite: 1331]
-import 'dart:typed_data'; // Bu import gerekli // [cite: 1331]
-import 'package:file_picker/file_picker.dart'; // <-- Eklendi [cite: 1331]
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data'; // Bu import gerekli
+import 'package:file_picker/file_picker.dart'; // <-- Eklendi
 
-import '../../../../config/constants.dart'; // [cite: 1331]
-import '../../../../core/network/api_client.dart'; // [cite: 1331]
-import '../../../../shared/models/pagination_model.dart'; // [cite: 1331]
-import '../models/property_model.dart'; // [cite: 1331]
-import '../models/payment_plan_model.dart'; // [cite: 1331]
-import '../models/project_model.dart'; // Bu import gerekli // [cite: 1331]
+import '../../../../config/constants.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../shared/models/pagination_model.dart';
+import '../models/property_model.dart'; //
+import '../models/payment_plan_model.dart';
+import '../models/project_model.dart'; // Bu import gerekli
 
 class PropertyService {
-  final ApiClient _apiClient; // [cite: 1331]
-  PropertyService(this._apiClient); // [cite: 1331]
+  final ApiClient _apiClient;
+  PropertyService(this._apiClient);
+
+  // ======================== DEBUG LOG Helper ========================
+  void _log(String message) {
+    // Kendi log prefix'inizi veya daha gelişmiş bir logger kullanabilirsiniz
+    debugPrint('[PropertyService] $message');
+  }
+  // ==================================================================
+
 
   Future<ProjectModel> createProject(Map<String, dynamic> data,
-      XFile? projectImage, XFile? sitePlanImage) async { // [cite: 1331]
+      XFile? projectImage, XFile? sitePlanImage) async {
     try {
-      debugPrint('🏗️ Yeni proje oluşturuluyor...'); // [cite: 1331]
-      final formData = FormData.fromMap(data); // Metin verilerini ekle // [cite: 1331]
+      _log('🏗️ Yeni proje oluşturma isteği gönderiliyor...'); // Log eklendi
+      final formData = FormData.fromMap(data); // Metin verilerini ekle
 
-      if (projectImage != null) { // [cite: 1331]
-        if (kIsWeb) { // [cite: 1331]
-          final bytes = await projectImage.readAsBytes(); // [cite: 1331]
-          formData.files.add(MapEntry( // [cite: 1331]
-            'project_image', // Django modelindeki field adı // [cite: 1331]
-            MultipartFile.fromBytes(bytes, filename: projectImage.name), // [cite: 1332]
+      if (projectImage != null) {
+        _log('🖼️ Proje görseli ekleniyor: ${projectImage.name}'); // Log eklendi
+        if (kIsWeb) {
+          final bytes = await projectImage.readAsBytes();
+          formData.files.add(MapEntry(
+            'project_image', // Django modelindeki field adı
+            MultipartFile.fromBytes(bytes, filename: projectImage.name),
           ));
-        } else { // [cite: 1332]
-          formData.files.add(MapEntry( // [cite: 1332]
-            'project_image', // [cite: 1332]
-            await MultipartFile.fromFile(projectImage.path, // [cite: 1332]
-                filename: projectImage.name), // [cite: 1332]
-          ));
-        }
-      }
-
-      if (sitePlanImage != null) { // [cite: 1332]
-        if (kIsWeb) { // [cite: 1332]
-          final bytes = await sitePlanImage.readAsBytes(); // [cite: 1332]
-          formData.files.add(MapEntry( // [cite: 1332]
-            'site_plan_image', // Django modelindeki field adı // [cite: 1332]
-            MultipartFile.fromBytes(bytes, filename: sitePlanImage.name), // [cite: 1333]
-          ));
-        } else { // [cite: 1333]
-          formData.files.add(MapEntry( // [cite: 1333]
-            'site_plan_image', // [cite: 1333]
-            await MultipartFile.fromFile(sitePlanImage.path, // [cite: 1333]
-                filename: sitePlanImage.name), // [cite: 1333]
+        } else {
+          formData.files.add(MapEntry(
+            'project_image', //
+            await MultipartFile.fromFile(projectImage.path,
+                filename: projectImage.name),
           ));
         }
       }
 
-      debugPrint('📦 Gönderilecek Form Verisi (Fields): ${formData.fields}'); // [cite: 1333]
-      debugPrint('📦 Gönderilecek Dosyalar: ${formData.files.map((f) => f.key)}'); // [cite: 1333]
+      if (sitePlanImage != null) {
+        _log('🗺️ Vaziyet planı görseli ekleniyor: ${sitePlanImage.name}'); // Log eklendi
+        if (kIsWeb) {
+          final bytes = await sitePlanImage.readAsBytes();
+          formData.files.add(MapEntry(
+            'site_plan_image', // Django modelindeki field adı
+            MultipartFile.fromBytes(bytes, filename: sitePlanImage.name),
+          ));
+        } else {
+          formData.files.add(MapEntry(
+            'site_plan_image',
+            await MultipartFile.fromFile(sitePlanImage.path, //
+                filename: sitePlanImage.name),
+          ));
+        }
+      }
 
-      final response = await _apiClient.post( // [cite: 1333]
-        ApiConstants.projects, // Proje endpoint'i // [cite: 1333]
-        data: formData, // [cite: 1334]
+      _log('📦 Gönderilecek Form Verisi (Fields): ${formData.fields}'); // Log eklendi
+      _log('📦 Gönderilecek Dosyalar: ${formData.files.map((f) => f.key)}'); // Log eklendi
+
+      final response = await _apiClient.post(
+        ApiConstants.projects, // Proje endpoint'i
+        data: formData,
       );
 
-      debugPrint('✅ Proje başarıyla oluşturuldu'); // [cite: 1334]
-      return ProjectModel.fromJson(response.data); // [cite: 1334]
+      _log('✅ Proje başarıyla oluşturuldu (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+      return ProjectModel.fromJson(response.data);
 
-    } on DioException catch (e) { // [cite: 1334]
-      debugPrint('❌ Proje oluşturma hatası: ${e.response?.statusCode}'); // [cite: 1334]
-      debugPrint('📦 Error Response: ${e.response?.data}'); // [cite: 1334]
-      String errorMessage = 'Proje oluşturulamadı.'; // [cite: 1334]
-      if (e.response?.data is Map) { // [cite: 1334]
-        final errors = e.response!.data as Map<String, dynamic>; // [cite: 1334]
-        if (errors.isNotEmpty) { // [cite: 1334]
-          final firstErrorKey = errors.keys.first; // [cite: 1334]
-          final firstErrorValue = errors[firstErrorKey]; // [cite: 1334]
-          if (firstErrorValue is List && firstErrorValue.isNotEmpty) { // [cite: 1334]
-            errorMessage = '${firstErrorKey}: ${firstErrorValue.first}'; // [cite: 1335]
-          } else { // [cite: 1335]
-            errorMessage = '${firstErrorKey}: ${firstErrorValue.toString()}'; // [cite: 1335]
+    } on DioException catch (e) {
+      _log('❌ Proje oluşturma hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error Response: ${e.response?.data}'); // Log eklendi
+      String errorMessage = 'Proje oluşturulamadı.';
+      if (e.response?.data is Map) {
+        final errors = e.response!.data as Map<String, dynamic>;
+        if (errors.isNotEmpty) {
+          final firstErrorKey = errors.keys.first; //
+          final firstErrorValue = errors[firstErrorKey];
+          if (firstErrorValue is List && firstErrorValue.isNotEmpty) {
+            errorMessage = '${firstErrorKey}: ${firstErrorValue.first}';
+          } else {
+            errorMessage = '${firstErrorKey}: ${firstErrorValue.toString()}';
           }
         }
-      } else if (e.response?.data is String) { // [cite: 1335]
-        errorMessage = e.response!.data; // [cite: 1335]
-      } else if (e.message != null) { // [cite: 1335]
-        errorMessage = e.message!; // [cite: 1335]
+      } else if (e.response?.data is String) { //
+        errorMessage = e.response!.data;
+      } else if (e.message != null) {
+        errorMessage = e.message!;
       }
-      throw Exception(errorMessage); // [cite: 1335]
-    } catch (e) { // [cite: 1335]
-      debugPrint('❌ Beklenmedik Proje oluşturma hatası: $e'); // [cite: 1335]
-      throw Exception('Beklenmedik bir hata oluştu: ${e.toString()}'); // [cite: 1335]
+      throw Exception(errorMessage);
+    } catch (e) {
+      _log('❌ Beklenmedik Proje oluşturma hatası: $e'); // Log eklendi
+      throw Exception('Beklenmedik bir hata oluştu: ${e.toString()}');
     }
   }
 
   // --- YENİ METOT: Örnek CSV İndirme ---
   Future<Response> downloadSampleCsv() async {
     try {
-      debugPrint('📄 Örnek CSV şablonu indiriliyor...'); // [cite: 1336]
+      _log('📄 Örnek CSV şablonu indirme isteği gönderiliyor...'); // Log eklendi
       // GET isteği, backend'den dosya içeriğini (byte) alacak
-      final response = await _apiClient.get( // [cite: 1336]
-        '${ApiConstants.properties}export-sample-csv/', // [cite: 1336]
-        options: Options( // [cite: 1336]
-          responseType: ResponseType.bytes, // Dosya içeriğini byte olarak al // [cite: 1336]
+      final response = await _apiClient.get(
+        '${ApiConstants.properties}export-sample-csv/',
+        options: Options(
+          responseType: ResponseType.bytes, // Dosya içeriğini byte olarak al
         ),
       );
-      debugPrint('✅ Örnek CSV şablonu başarıyla alındı.'); // [cite: 1336]
-      return response; // [cite: 1336]
-    } on DioException catch (e) { // [cite: 1336]
-      debugPrint('❌ Örnek CSV indirme hatası: ${e.response?.statusCode}'); // [cite: 1336]
-      debugPrint('📦 Error: ${e.response?.data}'); // [cite: 1336]
-      throw Exception('Örnek şablon indirilemedi: ${e.message}'); // [cite: 1336]
+      _log('✅ Örnek CSV şablonu başarıyla alındı (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+      return response;
+    } on DioException catch (e) {
+      _log('❌ Örnek CSV indirme hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error: ${e.response?.data}'); // Log eklendi
+      throw Exception('Örnek şablon indirilemedi: ${e.message}');
     }
   }
 
   // --- YENİ METOT: CSV Dosyası Yükleme ---
   Future<Response> uploadBulkPropertiesCsv(PlatformFile file) async {
     try {
-      debugPrint('🔼 Toplu mülk CSV dosyası yükleniyor: ${file.name}'); // [cite: 1337]
-      final formData = FormData(); // [cite: 1337]
+      _log('🔼 Toplu mülk CSV dosyası yükleme isteği gönderiliyor: ${file.name}'); // Log eklendi
+      final formData = FormData();
 
-      if (kIsWeb) { // [cite: 1337]
+      if (kIsWeb) { //
         // Web: Byte verisini kullan
-        formData.files.add(MapEntry( // [cite: 1337]
-          'file', // Backend'de beklenen dosya alanı adı // [cite: 1337]
-          MultipartFile.fromBytes(file.bytes!, filename: file.name), // [cite: 1337]
+        _log('   (Web) Byte verisi kullanılıyor...'); // Log eklendi
+        formData.files.add(MapEntry(
+          'file', // Backend'de beklenen dosya alanı adı
+          MultipartFile.fromBytes(file.bytes!, filename: file.name),
         ));
-      } else { // [cite: 1337]
+      } else {
         // Mobil: Dosya yolunu kullan
-        formData.files.add(MapEntry( // [cite: 1337]
-          'file', // Backend'de beklenen dosya alanı adı // [cite: 1337]
-          await MultipartFile.fromFile(file.path!, filename: file.name), // [cite: 1337]
+        _log('   (Mobil) Dosya yolu kullanılıyor: ${file.path}'); // Log eklendi
+        formData.files.add(MapEntry(
+          'file', // Backend'de beklenen dosya alanı adı
+          await MultipartFile.fromFile(file.path!, filename: file.name),
         ));
       }
 
       // API isteğini gönder
-      final response = await _apiClient.post( // [cite: 1338]
-        '${ApiConstants.properties}bulk-create-from-csv/', // Yeni endpoint // [cite: 1338]
-        data: formData, // [cite: 1338]
+      final response = await _apiClient.post(
+        '${ApiConstants.properties}bulk-create-from-csv/', // Yeni endpoint
+        data: formData, //
       );
 
-      debugPrint('✅ Toplu mülk CSV dosyası başarıyla yüklendi ve işlendi.'); // [cite: 1338]
-      return response; // Başarılı yanıtı döndür (örn: kaç tane oluşturulduğu bilgisi) // [cite: 1338]
+      _log('✅ Toplu mülk CSV dosyası başarıyla yüklendi ve işlendi (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+      return response; // Başarılı yanıtı döndür (örn: kaç tane oluşturulduğu bilgisi)
 
-    } on DioException catch (e) { // [cite: 1338]
-      debugPrint('❌ Toplu mülk CSV yükleme hatası: ${e.response?.statusCode}'); // [cite: 1338]
-      debugPrint('📦 Error Response: ${e.response?.data}'); // [cite: 1338]
+    } on DioException catch (e) {
+      _log('❌ Toplu mülk CSV yükleme hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error Response: ${e.response?.data}'); // Log eklendi
       // Hata detayını ayıkla
-      String errorMessage = 'Toplu mülk yüklenemedi.'; // [cite: 1338]
-      if (e.response?.data is Map) { // [cite: 1338]
-        final errors = e.response!.data as Map<String, dynamic>; // [cite: 1338]
-        if (errors.containsKey('error')) { // [cite: 1338]
-          errorMessage = errors['error'].toString(); // [cite: 1338]
-          if (errors.containsKey('details') && errors['details'] is List) { // [cite: 1338]
+      String errorMessage = 'Toplu mülk yüklenemedi.';
+      if (e.response?.data is Map) {
+        final errors = e.response!.data as Map<String, dynamic>;
+        if (errors.containsKey('error')) {
+          errorMessage = errors['error'].toString();
+          if (errors.containsKey('details') && errors['details'] is List) {
             // İlk birkaç hatayı mesaja ekleyebiliriz
-            errorMessage += '\nDetaylar:\n'; // [cite: 1339]
-            final details = (errors['details'] as List).take(3).map((d) { // [cite: 1339]
-              if (d is Map) { // [cite: 1339]
-                return "Satır ${d['line']}: ${d['errors']}"; // [cite: 1339]
+            errorMessage += '\nDetaylar:\n';
+            final details = (errors['details'] as List).take(3).map((d) { //
+              if (d is Map) {
+                return "Satır ${d['line']}: ${d['errors']}";
               }
-              return d.toString(); // [cite: 1339]
+              return d.toString();
             }).join('\n');
-            errorMessage += details; // [cite: 1339]
-            if ((errors['details'] as List).length > 3) { // [cite: 1339]
-              errorMessage += "\n..."; // [cite: 1339]
+            errorMessage += details;
+            if ((errors['details'] as List).length > 3) {
+              errorMessage += "\n...";
             }
           }
-        } else { // [cite: 1339]
-          errorMessage = errors.toString(); // Genel map hatası // [cite: 1340]
+        } else {
+          errorMessage = errors.toString(); // Genel map hatası
         }
-      } else if (e.response?.data is String) { // [cite: 1340]
-        errorMessage = e.response!.data; // [cite: 1340]
-      } else if (e.message != null) { // [cite: 1340]
-        errorMessage = e.message!; // [cite: 1340]
+      } else if (e.response?.data is String) { //
+        errorMessage = e.response!.data;
+      } else if (e.message != null) {
+        errorMessage = e.message!;
       }
-      throw Exception(errorMessage); // [cite: 1340]
-    } catch (e) { // [cite: 1340]
-      debugPrint('❌ Beklenmedik Toplu mülk CSV yükleme hatası: $e'); // [cite: 1340]
-      throw Exception('Beklenmedik bir hata oluştu: ${e.toString()}'); // [cite: 1340]
+      throw Exception(errorMessage);
+    } catch (e) {
+      _log('❌ Beklenmedik Toplu mülk CSV yükleme hatası: $e'); // Log eklendi
+      throw Exception('Beklenmedik bir hata oluştu: ${e.toString()}');
     }
   }
 
   // ✅ GÜNCELLEME: Proje listesini API'den doğru şekilde almak için düzeltildi
-  Future<List<ProjectModel>> getProjects() async { // [cite: 1340]
+  Future<List<ProjectModel>> getProjects() async {
     try {
-      debugPrint('🏗️ Proje listesi alınıyor...'); // [cite: 1340]
-      final response = await _apiClient.get(ApiConstants.projects); // [cite: 1340]
+      _log('🏗️ Proje listesi isteği gönderiliyor...'); // Log eklendi
+      final response = await _apiClient.get(ApiConstants.projects);
 
       // Yanıtın Map olup olmadığını ve 'results' anahtarını içerip içermediğini kontrol et
       if (response.data is Map<String, dynamic> && response.data.containsKey('results')) {
         // 'results' listesini al
-        final List<dynamic> data = response.data['results'] as List<dynamic>? ?? []; // [cite: 1340]
-        debugPrint('✅ ${data.length} proje alındı (Sayfalanmış)'); // [cite: 1340]
-        return data //
-            .map((json) => ProjectModel.fromJson(json as Map<String, dynamic>)) //
-            .toList(); //
+        final List<dynamic> data = response.data['results'] as List<dynamic>? ?? []; //
+        _log('✅ ${data.length} proje alındı (Sayfalanmış)'); // Log eklendi
+        return data
+            .map((json) => ProjectModel.fromJson(json as Map<String, dynamic>))
+            .toList();
       } else if (response.data is List) {
         // Eğer yanıt doğrudan liste ise (sayfalama yoksa)
         final List<dynamic> data = response.data as List<dynamic>;
-        debugPrint('✅ ${data.length} proje alındı (Sayfasız)');
+        _log('✅ ${data.length} proje alındı (Sayfasız)'); // Log eklendi
         return data
             .map((json) => ProjectModel.fromJson(json as Map<String, dynamic>))
             .toList();
       } else {
         // Beklenmeyen format
-        debugPrint('❌ Proje listesi yanıtı beklenmeyen formatta: ${response.data.runtimeType}');
+        _log('❌ Proje listesi yanıtı beklenmeyen formatta: ${response.data.runtimeType}'); // Log eklendi
         throw Exception('Projeler yüklenemedi: Geçersiz yanıt formatı');
       }
     } on DioException catch (e) { //
-      debugPrint('❌ Proje listesi hatası: ${e.response?.statusCode}'); //
-      throw Exception('Projeler yüklenemedi: ${e.message}'); //
+      _log('❌ Proje listesi hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('Projeler yüklenemedi: ${e.message}');
     } catch (e) { // Diğer hatalar için (örn: format hatası)
-      debugPrint('❌ Proje listesi işleme hatası: $e');
+      _log('❌ Proje listesi işleme hatası: $e'); // Log eklendi
       throw Exception('Projeler işlenirken bir hata oluştu: ${e.toString()}');
     }
   }
 
   Future<void> bulkCreateProperties(
-      List<Map<String, dynamic>> properties) async { //
+      List<Map<String, dynamic>> properties) async {
     try {
-      debugPrint( //
-          '🏘️ ${properties.length} adet mülk toplu olarak oluşturuluyor...'); //
-      final data = {'properties': properties}; //
-      await _apiClient.post( //
-        '${ApiConstants.properties}bulk_create/', //
-        data: data, // [cite: 1342]
-      ); // [cite: 1342]
-      debugPrint('✅ Mülkler başarıyla oluşturuldu.'); // [cite: 1342]
-    } on DioException catch (e) { // [cite: 1342]
-      debugPrint('❌ Toplu mülk oluşturma hatası: ${e.response?.statusCode}'); // [cite: 1342]
-      debugPrint('📦 Error: ${e.response?.data}'); // [cite: 1342]
-      throw Exception( // [cite: 1342]
-          'Toplu mülk oluşturulamadı: ${e.response?.data ?? e.message}'); // [cite: 1342]
+      _log('🏘️ ${properties.length} adet mülk toplu olarak oluşturma isteği gönderiliyor...'); // Log eklendi
+      final data = {'properties': properties};
+      await _apiClient.post(
+        '${ApiConstants.properties}bulk_create/',
+        data: data,
+      );
+      _log('✅ Mülkler başarıyla oluşturuldu.'); // Log eklendi
+    } on DioException catch (e) {
+      _log('❌ Toplu mülk oluşturma hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error: ${e.response?.data}'); // Log eklendi
+      throw Exception(
+          'Toplu mülk oluşturulamadı: ${e.response?.data ?? e.message}'); //
     }
   }
 
-  Future<PaginationModel<PropertyModel>> getProperties({ // [cite: 1342]
-    int page = 1, // [cite: 1342]
-    int limit = 20, // [cite: 1342]
-    String? search, // [cite: 1342]
-    String? status, // [cite: 1342]
-    String? propertyType, // [cite: 1342]
-    int? projectId, // [cite: 1342]
+  // --- GÜNCELLEME: getProperties metoduna yeni filtre parametreleri eklendi ---
+  Future<PaginationModel<PropertyModel>> getProperties({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? status,
+    int? projectId,
+    // Yeni filtre parametreleri
+    String? propertyType,
+    String? roomCount,
+    String? facade,
+    double? minArea,
+    double? maxArea,
   }) async {
     try {
-      debugPrint('🏠 Gayrimenkuller alınıyor...'); // [cite: 1342]
-      final queryParams = <String, dynamic>{ // [cite: 1343]
-        'page': page, // [cite: 1343]
-        'page_size': limit, // [cite: 1343]
+      _log('🏠 Gayrimenkuller isteği gönderiliyor (Sayfa: $page)...'); // Log eklendi
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'page_size': limit,
       };
-      if (search != null && search.isNotEmpty) { // [cite: 1343]
-        queryParams['search'] = search; // [cite: 1343]
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search; //
       }
-      if (status != null && status.isNotEmpty) { // [cite: 1343]
-        queryParams['status'] = status; // [cite: 1343]
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
       }
-      if (propertyType != null && propertyType.isNotEmpty) { // [cite: 1343]
-        queryParams['property_type'] = propertyType; // [cite: 1343]
+      if (projectId != null) {
+        queryParams['project'] = projectId;
       }
-      if (projectId != null) { // [cite: 1343]
-        queryParams['project'] = projectId; // [cite: 1343]
+      // Yeni filtre parametrelerini ekle
+      if (propertyType != null && propertyType.isNotEmpty) {
+        queryParams['property_type'] = propertyType; // API'deki beklenen ad
+      }
+      if (roomCount != null && roomCount.isNotEmpty) {
+        // Backend'in CharFilter(lookup_expr='icontains') kullandığını varsayarsak:
+        // Backend filterset'te parametre adı 'room_count' olarak tanımlı,
+        // lookup_expr zaten 'icontains' olduğu için sadece 'room_count' gönderilmelidir.
+        queryParams['room_count'] = roomCount;
+      }
+      if (facade != null && facade.isNotEmpty) {
+        queryParams['facade'] = facade; // API'deki beklenen ad //
+      }
+      if (minArea != null) {
+        // Backend FilterSet net_area için min_area / max_area parametrelerini bekliyor
+        queryParams['min_area'] = minArea;
+      }
+      if (maxArea != null) {
+        queryParams['max_area'] = maxArea;
       }
 
-      final response = await _apiClient.get( // [cite: 1344]
-        ApiConstants.properties, // [cite: 1344]
-        queryParameters: queryParams, // [cite: 1344]
-      );
-      debugPrint('✅ Gayrimenkuller alındı'); // [cite: 1344]
+      _log('🔍 API Query Params: $queryParams'); // Sorgu parametrelerini logla
 
-      return PaginationModel<PropertyModel>.fromJson( // [cite: 1344]
-        response.data, // [cite: 1344]
-            (json) => PropertyModel.fromJson(json as Map<String, dynamic>), // [cite: 1344]
+      final response = await _apiClient.get(
+        ApiConstants.properties,
+        queryParameters: queryParams,
       );
-    } on DioException catch (e) { // [cite: 1344]
-      debugPrint('❌ Gayrimenkul listesi hatası: ${e.response?.statusCode}'); // [cite: 1344]
-      debugPrint('📦 Error: ${e.response?.data}'); // [cite: 1344]
-      throw Exception('Gayrimenkuller yüklenemedi: ${e.message}'); // [cite: 1344]
+      _log('✅ Gayrimenkuller alındı (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+
+      return PaginationModel<PropertyModel>.fromJson(
+        response.data,
+            (json) => PropertyModel.fromJson(json as Map<String, dynamic>), //
+      );
+    } on DioException catch (e) {
+      _log('❌ Gayrimenkul listesi hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error: ${e.response?.data}'); // Log eklendi
+      throw Exception('Gayrimenkuller yüklenemedi: ${e.message}');
     }
   }
+  // --- GÜNCELLEME SONU ---
 
-  Future<PaginationModel<PropertyModel>> getAvailableProperties({ // [cite: 1344]
-    int page = 1, // [cite: 1344]
-    int limit = 20, // [cite: 1344]
-    String? search, // [cite: 1344]
+
+  Future<PaginationModel<PropertyModel>> getAvailableProperties({
+    int page = 1,
+    int limit = 20,
+    String? search,
   }) async {
     try {
-      debugPrint('🏡 Müsait gayrimenkuller alınıyor...'); // [cite: 1345]
-      final queryParams = <String, dynamic>{ // [cite: 1345]
-        'page': page, // [cite: 1345]
-        'page_size': limit, // [cite: 1345]
+      _log('🏡 Müsait gayrimenkuller isteği gönderiliyor (Sayfa: $page)...'); // Log eklendi
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'page_size': limit,
       };
-      if (search != null && search.isNotEmpty) { // [cite: 1345]
-        queryParams['search'] = search; // [cite: 1345]
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
       }
 
-      final response = await _apiClient.get( // [cite: 1345]
-        ApiConstants.availableProperties, // [cite: 1345]
-        queryParameters: queryParams, // [cite: 1345]
+      final response = await _apiClient.get(
+        ApiConstants.availableProperties,
+        queryParameters: queryParams, //
       );
-      debugPrint('✅ Müsait gayrimenkuller alındı'); // [cite: 1345]
+      _log('✅ Müsait gayrimenkuller alındı (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
 
-      return PaginationModel<PropertyModel>.fromJson( // [cite: 1345]
-        response.data, // [cite: 1345]
-            (json) => PropertyModel.fromJson(json as Map<String, dynamic>), // [cite: 1345]
-      ); // [cite: 1346]
-    } on DioException catch (e) { // [cite: 1346]
-      debugPrint('❌ Müsait gayrimenkul hatası: ${e.response?.statusCode}'); // [cite: 1346]
-      debugPrint('📦 Error: ${e.response?.data}'); // [cite: 1346]
-      throw Exception('Satılık gayrimenkuller yüklenemedi: ${e.message}'); // [cite: 1346]
+      return PaginationModel<PropertyModel>.fromJson(
+        response.data,
+            (json) => PropertyModel.fromJson(json as Map<String, dynamic>),
+      );
+    } on DioException catch (e) {
+      _log('❌ Müsait gayrimenkul hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error: ${e.response?.data}'); // Log eklendi
+      throw Exception('Satılık gayrimenkuller yüklenemedi: ${e.message}');
     }
   }
 
-  Future<PropertyModel> getPropertyDetail(int id) async { // [cite: 1346]
+  Future<PropertyModel> getPropertyDetail(int id) async {
     try {
-      debugPrint('📋 Gayrimenkul detayı alınıyor: $id'); // [cite: 1346]
-      final response = await _apiClient.get('${ApiConstants.properties}$id/'); // [cite: 1346]
-      debugPrint('📦 Raw property detail response: ${response.data}'); // [cite: 1346]
-      final raw = // [cite: 1346]
-      (response.data as Map<String, dynamic>?) ?? <String, dynamic>{}; // [cite: 1346]
+      _log('📋 Gayrimenkul detayı isteği gönderiliyor: ID $id'); // Log eklendi
+      final response = await _apiClient.get('${ApiConstants.properties}$id/');
+      _log('📦 Raw property detail response: ${response.data}');
+      final raw =
+          (response.data as Map<String, dynamic>?) ?? <String, dynamic>{};
 
-      if (raw['project'] == null || raw['project'] is! Map) { // [cite: 1346]
-        raw['project'] = {'id': 0, 'name': 'Bilinmeyen Proje'}; // [cite: 1346]
-      } else if (raw['project'] is Map && !raw['project'].containsKey('id')) { // [cite: 1347]
-        raw['project']['id'] = 0; // [cite: 1347]
-        raw['project']['name'] = raw['project']['name'] ?? 'Bilinmeyen Proje'; // [cite: 1347]
+      // --- SANITIZE ---
+      _log('🧹 Yanıt verisi temizleniyor...'); // Log eklendi
+      // Project (make sure it's a valid map with id and name)
+      if (raw['project'] == null || raw['project'] is! Map) { //
+        _log('   ⚠️ Proje bilgisi eksik veya geçersiz, varsayılan kullanılıyor.'); // Log eklendi
+        raw['project'] = {'id': 0, 'name': 'Bilinmeyen Proje'};
+      } else if (raw['project'] is Map && !raw['project'].containsKey('id')) {
+        _log('   ⚠️ Proje ID eksik, varsayılan (0) kullanılıyor.'); // Log eklendi
+        raw['project']['id'] = 0;
+        raw['project']['name'] = raw['project']['name'] ?? 'Bilinmeyen Proje';
       }
 
-
-      if (raw['images'] is List) { // [cite: 1347]
-        final safeImages = <Map<String, dynamic>>[]; // [cite: 1347]
-        for (var item in raw['images'] as List) { // [cite: 1347]
-          if (item is Map<String, dynamic>) { // [cite: 1347]
-            safeImages.add({ // [cite: 1347]
-              'id': item['id'] ?? 0, // [cite: 1347]
-              'image': item['image'] ?? '', // [cite: 1347]
-              'image_type': item['image_type'] ?? 'OTHER', // [cite: 1348]
-              'title': item['title'] ?? '', // [cite: 1348]
+      // Images (ensure list of maps with default values)
+      if (raw['images'] is List) {
+        final safeImages = <Map<String, dynamic>>[];
+        for (var item in raw['images'] as List) {
+          if (item is Map<String, dynamic>) {
+            safeImages.add({
+              'id': item['id'] ?? 0,
+              'image': item['image'] ?? '', //
+              'image_type': item['image_type'] ?? 'OTHER',
+              'title': item['title'] ?? '',
             });
+          } else {
+            _log('   ⚠️ Geçersiz görsel verisi atlandı: $item'); // Log eklendi
           }
         }
-        raw['images'] = safeImages; // [cite: 1348]
-      } else { // [cite: 1348]
-        raw['images'] = <Map<String, dynamic>>[]; // [cite: 1348]
+        raw['images'] = safeImages;
+      } else {
+        _log('   ⚠️ Görsel listesi bulunamadı veya geçersiz, boş liste kullanılıyor.'); // Log eklendi
+        raw['images'] = <Map<String, dynamic>>[];
       }
 
-      if (raw['documents'] is List) { // [cite: 1348]
-        final safeDocs = <Map<String, dynamic>>[]; // [cite: 1348]
-        for (var item in raw['documents'] as List) { // [cite: 1348]
-          if (item is Map<String, dynamic>) { // [cite: 1348]
-            safeDocs.add({ // [cite: 1349]
-              'id': item['id'] ?? 0, // [cite: 1349]
-              'document': item['document'] ?? '', // [cite: 1349]
-              'document_type': item['document_type'] ?? 'DIGER', // [cite: 1349]
-              'document_type_display': item['document_type_display'] ?? 'Diğer', // [cite: 1349]
-              'title': item['title'] ?? '', // [cite: 1349]
+      // Documents (ensure list of maps with default values)
+      if (raw['documents'] is List) {
+        final safeDocs = <Map<String, dynamic>>[];
+        for (var item in raw['documents'] as List) {
+          if (item is Map<String, dynamic>) {
+            safeDocs.add({ //
+              'id': item['id'] ?? 0,
+              'document': item['document'] ?? '',
+              'document_type': item['document_type'] ?? 'DIGER',
+              'document_type_display': item['document_type_display'] ?? 'Diğer',
+              'title': item['title'] ?? '',
             });
+          } else {
+            _log('   ⚠️ Geçersiz belge verisi atlandı: $item'); // Log eklendi
           }
         }
-        raw['documents'] = safeDocs; // [cite: 1349]
-      } else { // [cite: 1349]
-        raw['documents'] = <Map<String, dynamic>>[]; // [cite: 1349]
+        raw['documents'] = safeDocs;
+      } else {
+        _log('   ⚠️ Belge listesi bulunamadı veya geçersiz, boş liste kullanılıyor.'); // Log eklendi
+        raw['documents'] = <Map<String, dynamic>>[];
       }
 
-      if (raw['payment_plans'] is List) { // [cite: 1350]
-        final safePlans = <Map<String, dynamic>>[]; // [cite: 1350]
-        for (var item in raw['payment_plans'] as List) { // [cite: 1350]
-          if (item is Map<String, dynamic>) { // [cite: 1350]
-            safePlans.add({ // [cite: 1350]
-              'id': item['id'] ?? 0, // [cite: 1350]
-              'plan_type': item['plan_type'] ?? 'OTHER', // [cite: 1350]
-              'name': item['name'] ?? '', // [cite: 1350]
-              'details': item['details'] ?? <String, dynamic>{}, // [cite: 1350]
-              'details_display': item['details_display'] ?? '', // [cite: 1351]
-              'is_active': item['is_active'] ?? true, // [cite: 1351]
-            }); // [cite: 1351]
+      // Payment Plans (ensure list of maps with default values)
+      if (raw['payment_plans'] is List) { //
+        final safePlans = <Map<String, dynamic>>[];
+        for (var item in raw['payment_plans'] as List) {
+          if (item is Map<String, dynamic>) {
+            safePlans.add({
+              'id': item['id'] ?? 0,
+              'plan_type': item['plan_type'] ?? 'OTHER',
+              'name': item['name'] ?? '',
+              'details': item['details'] ?? <String, dynamic>{},
+              'details_display': item['details_display'] ?? '',
+              'is_active': item['is_active'] ?? true, //
+            });
+          } else {
+            _log('   ⚠️ Geçersiz ödeme planı verisi atlandı: $item'); // Log eklendi
           }
         }
-        raw['payment_plans'] = safePlans; // [cite: 1351]
-      } else { // [cite: 1351]
-        raw['payment_plans'] = <Map<String, dynamic>>[]; // [cite: 1351]
+        raw['payment_plans'] = safePlans;
+      } else {
+        _log('   ⚠️ Ödeme planı listesi bulunamadı veya geçersiz, boş liste kullanılıyor.'); // Log eklendi
+        raw['payment_plans'] = <Map<String, dynamic>>[];
       }
+      // --- SANITIZE END ---
 
-      debugPrint('✅ Gayrimenkul detayı alındı (sanitized)'); // [cite: 1351]
-      return PropertyModel.fromJson(raw); // [cite: 1351]
-    } on DioException catch (e) { // [cite: 1351]
-      debugPrint('❌ Gayrimenkul detay hatası: ${e.response?.statusCode}'); // [cite: 1351]
-      debugPrint('📦 Error: ${e.response?.data}'); // [cite: 1351]
-      throw Exception('Gayrimenkul detayı yüklenemedi: ${e.message}'); // [cite: 1352]
-    } catch (e, st) { // [cite: 1352]
-      debugPrint('❌ Gayrimenkul detay parsing hatası: $e'); // [cite: 1352]
-      debugPrint('$st'); // [cite: 1352]
-      rethrow; // Re-throw the original error for provider handling // [cite: 1352]
+      _log('✅ Gayrimenkul detayı alındı ve temizlendi (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+      return PropertyModel.fromJson(raw);
+    } on DioException catch (e) {
+      _log('❌ Gayrimenkul detay hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error: ${e.response?.data}'); // Log eklendi
+      throw Exception('Gayrimenkul detayı yüklenemedi: ${e.message}');
+    } catch (e, st) {
+      _log('❌ Gayrimenkul detay parsing hatası: $e'); // Log eklendi
+      _log('$st');
+      rethrow; // Re-throw the original error for provider handling
     }
   }
 
-  Future<Map<String, dynamic>> getPropertyStatistics() async { // [cite: 1352]
+  Future<Map<String, dynamic>> getPropertyStatistics() async {
     try {
-      debugPrint('📊 Gayrimenkul istatistikleri alınıyor...'); // [cite: 1352]
-      final response = await _apiClient.get(ApiConstants.propertyStatistics); // [cite: 1352]
-      debugPrint('✅ İstatistikler alındı'); // [cite: 1352]
-      return response.data as Map<String, dynamic>; // [cite: 1352]
-    } on DioException catch (e) { // [cite: 1352]
-      debugPrint('❌ İstatistik hatası: ${e.response?.statusCode}'); // [cite: 1352]
-      throw Exception('İstatistikler yüklenemedi: ${e.message}'); // [cite: 1352]
+      _log('📊 Gayrimenkul istatistikleri isteği gönderiliyor...'); // Log eklendi
+      final response = await _apiClient.get(ApiConstants.propertyStatistics); //
+      _log('✅ İstatistikler alındı (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      _log('❌ İstatistik hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('İstatistikler yüklenemedi: ${e.message}');
     }
   }
 
-  Future<PropertyModel> createProperty(Map<String, dynamic> data) async { // [cite: 1353]
+  Future<PropertyModel> createProperty(Map<String, dynamic> data) async {
     try {
-      debugPrint('➕ Gayrimenkul oluşturuluyor...'); // [cite: 1353]
-      debugPrint('📦 Data: $data'); // [cite: 1353]
-      final response = await _apiClient.post( // [cite: 1353]
-        ApiConstants.properties, // [cite: 1353]
-        data: data, // [cite: 1353]
+      _log('➕ Yeni gayrimenkul oluşturma isteği gönderiliyor...'); // Log eklendi
+      _log('📦 Data: $data'); // Log eklendi
+      final response = await _apiClient.post(
+        ApiConstants.properties,
+        data: data,
       );
-      debugPrint('✅ Gayrimenkul oluşturuldu'); // [cite: 1353]
-      return PropertyModel.fromJson(response.data); // [cite: 1353]
-    } on DioException catch (e) { // [cite: 1353]
-      debugPrint('❌ Gayrimenkul oluşturma hatası: ${e.response?.statusCode}'); // [cite: 1353]
-      debugPrint('📦 Error: ${e.response?.data}'); // [cite: 1353]
-      throw Exception( // [cite: 1353]
-          'Gayrimenkul oluşturulamadı: ${e.response?.data ?? e.message}'); // [cite: 1353]
+      _log('✅ Gayrimenkul oluşturuldu (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+      return PropertyModel.fromJson(response.data);
+    } on DioException catch (e) {
+      _log('❌ Gayrimenkul oluşturma hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error: ${e.response?.data}'); // Log eklendi
+      throw Exception(
+          'Gayrimenkul oluşturulamadı: ${e.response?.data ?? e.message}');
     }
   }
 
-  Future<PropertyModel> updateProperty(int id, Map<String, dynamic> data) async { // [cite: 1353]
+  Future<PropertyModel> updateProperty(int id, Map<String, dynamic> data) async {
     try {
-      debugPrint('✏️ Gayrimenkul güncelleniyor: $id'); // [cite: 1354]
-      debugPrint('📦 Data: $data'); // [cite: 1354]
-      final response = await _apiClient.put( // [cite: 1354]
-        '${ApiConstants.properties}$id/', // [cite: 1354]
-        data: data, // [cite: 1354]
+      _log('✏️ Gayrimenkul güncelleme isteği gönderiliyor: ID $id'); // Log eklendi //
+      _log('📦 Data: $data'); // Log eklendi
+      final response = await _apiClient.put(
+        '${ApiConstants.properties}$id/',
+        data: data,
       );
-      debugPrint('✅ Gayrimenkul güncellendi'); // [cite: 1354]
-      return PropertyModel.fromJson(response.data); // [cite: 1354]
-    } on DioException catch (e) { // [cite: 1354]
-      debugPrint('❌ Gayrimenkul güncelleme hatası: ${e.response?.statusCode}'); // [cite: 1354]
-      debugPrint('📦 Error: ${e.response?.data}'); // [cite: 1354]
-      throw Exception( // [cite: 1354]
-          'Gayrimenkul güncellenemedi: ${e.response?.data ?? e.message}'); // [cite: 1354]
+      _log('✅ Gayrimenkul güncellendi (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+      return PropertyModel.fromJson(response.data);
+    } on DioException catch (e) {
+      _log('❌ Gayrimenkul güncelleme hatası: ${e.response?.statusCode}'); // Log eklendi
+      _log('📦 Error: ${e.response?.data}'); // Log eklendi
+      throw Exception(
+          'Gayrimenkul güncellenemedi: ${e.response?.data ?? e.message}');
     }
   }
 
-  Future<void> uploadImages(int propertyId, List<XFile> imageFiles) async { // [cite: 1354]
+  Future<void> uploadImages(int propertyId, List<XFile> imageFiles) async {
     try {
-      debugPrint( // [cite: 1354]
-          '🖼️ ${imageFiles.length} adet görsel yükleniyor: Property ID $propertyId'); // [cite: 1355]
-      final formData = FormData(); // [cite: 1355]
-      for (var file in imageFiles) { // [cite: 1355]
-        if (kIsWeb) { // [cite: 1355]
-          final bytes = await file.readAsBytes(); // [cite: 1355]
-          formData.files.add(MapEntry( // [cite: 1355]
-            'images', // Use 'images' as key for multiple files // [cite: 1355]
-            MultipartFile.fromBytes(bytes, filename: file.name), // [cite: 1355]
+      _log('🖼️ ${imageFiles.length} görsel yükleme isteği gönderiliyor: Mülk ID $propertyId'); // Log eklendi
+      final formData = FormData();
+      for (var file in imageFiles) {
+        if (kIsWeb) {
+          final bytes = await file.readAsBytes();
+          formData.files.add(MapEntry(
+            'images', // Use 'images' as key for multiple files //
+            MultipartFile.fromBytes(bytes, filename: file.name),
           ));
-        } else { // [cite: 1355]
-          formData.files.add(MapEntry( // [cite: 1355]
-            'images', // Use 'images' as key for multiple files // [cite: 1356]
-            await MultipartFile.fromFile(file.path, filename: file.name), // [cite: 1356]
+        } else {
+          formData.files.add(MapEntry(
+            'images', // Use 'images' as key for multiple files
+            await MultipartFile.fromFile(file.path, filename: file.name),
           ));
         }
       }
 
-      await _apiClient.post( // [cite: 1356]
-        '${ApiConstants.properties}$propertyId/upload_images/', // [cite: 1356]
-        data: formData, // [cite: 1356]
+      final response = await _apiClient.post(
+        '${ApiConstants.properties}$propertyId/upload_images/',
+        data: formData,
       );
-      debugPrint('✅ Görseller başarıyla yüklendi.'); // [cite: 1356]
-    } on DioException catch (e) { // [cite: 1356]
-      debugPrint('❌ Görsel yükleme hatası: ${e.response?.data}'); // [cite: 1356]
-      throw Exception( // [cite: 1356]
-          'Görsel yüklenemedi: ${e.response?.data['detail'] ?? e.message}'); // [cite: 1356]
+      _log('✅ Görseller başarıyla yüklendi (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+    } on DioException catch (e) {
+      _log('❌ Görsel yükleme hatası: ${e.response?.data}'); // Log eklendi //
+      throw Exception(
+          'Görsel yüklenemedi: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
-  Future<void> uploadDocument({ // [cite: 1356]
-    required int propertyId, // [cite: 1356]
-    required String title, // [cite: 1356]
-    required String docType, // [cite: 1356]
-    required String fileName, // [cite: 1357]
-    String? filePath, // [cite: 1357]
-    Uint8List? fileBytes, // [cite: 1357]
+  Future<void> uploadDocument({
+    required int propertyId,
+    required String title,
+    required String docType,
+    required String fileName,
+    String? filePath,
+    Uint8List? fileBytes,
   }) async {
     try {
-      debugPrint('📄 Belge yükleniyor: $title'); // [cite: 1357]
-      late MultipartFile multipartFile; // [cite: 1357]
+      _log('📄 Belge yükleme isteği gönderiliyor: $title - Mülk ID $propertyId'); // Log eklendi
+      late MultipartFile multipartFile;
 
-      if (fileBytes != null) { // [cite: 1357]
-        multipartFile = MultipartFile.fromBytes(fileBytes, filename: fileName); // [cite: 1357]
-      } else if (filePath != null) { // [cite: 1357]
-        multipartFile = // [cite: 1357]
-        await MultipartFile.fromFile(filePath, filename: fileName); // [cite: 1357]
-      } else { // [cite: 1357]
-        throw Exception( // [cite: 1357]
-            'Yüklenecek dosya verisi (path veya bytes) bulunamadı.'); // [cite: 1357]
+      if (fileBytes != null) {
+        _log('   (Web) Byte verisi kullanılıyor...'); // Log eklendi
+        multipartFile = MultipartFile.fromBytes(fileBytes, filename: fileName);
+      } else if (filePath != null) {
+        _log('   (Mobil) Dosya yolu kullanılıyor: $filePath'); // Log eklendi
+        multipartFile =
+        await MultipartFile.fromFile(filePath, filename: fileName);
+      } else {
+        _log('❌ Yüklenecek dosya verisi bulunamadı.'); // Log eklendi
+        throw Exception(
+            'Yüklenecek dosya verisi (path veya bytes) bulunamadı.'); //
       }
 
-      FormData formData = FormData.fromMap({ // [cite: 1358]
-        'document': multipartFile, // [cite: 1358]
-        'title': title, // [cite: 1358]
-        'document_type': docType, // [cite: 1358]
+      FormData formData = FormData.fromMap({
+        'document': multipartFile,
+        'title': title,
+        'document_type': docType,
       });
 
-      await _apiClient.post( // [cite: 1358]
-        '${ApiConstants.properties}$propertyId/upload_documents/', // [cite: 1358]
-        data: formData, // [cite: 1358]
+      _log('📦 Gönderilecek Form Verisi: title=$title, document_type=$docType, file=$fileName'); // Log eklendi
+      final response = await _apiClient.post(
+        '${ApiConstants.properties}$propertyId/upload_documents/',
+        data: formData,
       );
-      debugPrint('✅ Belge başarıyla yüklendi.'); // [cite: 1358]
-    } on DioException catch (e) { // [cite: 1358]
-      throw Exception( // [cite: 1358]
-          'Belge yüklenemedi: ${e.response?.data['detail'] ?? e.message}'); // [cite: 1358]
+      _log('✅ Belge başarıyla yüklendi (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+    } on DioException catch (e) {
+      _log('❌ Belge yükleme hatası: ${e.response?.data}'); // Log eklendi
+      throw Exception(
+          'Belge yüklenemedi: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
-  Future<PaymentPlanModel> createPaymentPlan( // [cite: 1358]
+  Future<PaymentPlanModel> createPaymentPlan(
       int propertyId, Map<String, dynamic> data) async {
     try {
-      debugPrint('💰 Ödeme planı oluşturuluyor...'); // [cite: 1358]
-      final response = await _apiClient.post( // [cite: 1359]
-        '${ApiConstants.properties}$propertyId/create_payment_plan/', // [cite: 1359]
-        data: data, // [cite: 1359]
+      _log('💰 Ödeme planı oluşturma isteği gönderiliyor: Mülk ID $propertyId'); // Log eklendi
+      final response = await _apiClient.post(
+        '${ApiConstants.properties}$propertyId/create_payment_plan/',
+        data: data, //
       );
-      debugPrint('✅ Ödeme planı oluşturuldu.'); // [cite: 1359]
-      return PaymentPlanModel.fromJson(response.data['payment_plan']); // [cite: 1359]
-    } on DioException catch (e) { // [cite: 1359]
-      throw Exception( // [cite: 1359]
-          'Ödeme planı oluşturulamadı: ${e.response?.data['detail'] ?? e.message}'); // [cite: 1359]
+      _log('✅ Ödeme planı oluşturuldu (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+      return PaymentPlanModel.fromJson(response.data['payment_plan']);
+    } on DioException catch (e) {
+      _log('❌ Ödeme planı oluşturma hatası: ${e.response?.data}'); // Log eklendi
+      throw Exception(
+          'Ödeme planı oluşturulamadı: ${e.response?.data['detail'] ?? e.message}');
     }
   }
 
-  Future<void> deleteDocument(int documentId) async { // [cite: 1359]
+  Future<void> deleteDocument(int documentId) async {
     try {
-      await _apiClient.delete('/properties/documents/$documentId/'); // [cite: 1359]
-    } on DioException catch (e) { // [cite: 1359]
-      throw Exception('Belge silinemedi: ${e.message}'); // [cite: 1359]
+      _log('🗑️ Belge silme isteği gönderiliyor: ID $documentId'); // Log eklendi
+      final response = await _apiClient.delete('/properties/documents/$documentId/');
+      _log('✅ Belge silindi (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+    } on DioException catch (e) {
+      _log('❌ Belge silme hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('Belge silinemedi: ${e.message}');
     }
   }
 
-  Future<void> deletePaymentPlan(int planId) async { // [cite: 1359]
+  Future<void> deletePaymentPlan(int planId) async {
     try {
-      await _apiClient.delete('/properties/payment-plans/$planId/'); // [cite: 1359]
-    } on DioException catch (e) { // [cite: 1360]
-      throw Exception('Ödeme planı silinemedi: ${e.message}'); // [cite: 1360]
+      _log('🗑️ Ödeme planı silme isteği gönderiliyor: ID $planId'); // Log eklendi
+      final response = await _apiClient.delete('/properties/payment-plans/$planId/');
+      _log('✅ Ödeme planı silindi (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+    } on DioException catch (e) {
+      _log('❌ Ödeme planı silme hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('Ödeme planı silinemedi: ${e.message}');
     }
   }
 
-  Future<void> deleteImage(int imageId) async { // [cite: 1360]
+  Future<void> deleteImage(int imageId) async {
     try {
-      await _apiClient.delete('/properties/images/$imageId/'); // [cite: 1360]
-    } on DioException catch (e) { // [cite: 1360]
-      throw Exception('Görsel silinemedi: ${e.message}'); // [cite: 1360]
+      _log('🗑️ Görsel silme isteği gönderiliyor: ID $imageId'); // Log eklendi
+      final response = await _apiClient.delete('/properties/images/$imageId/');
+      _log('✅ Görsel silindi (Yanıt Kodu: ${response.statusCode}).'); // Log eklendi
+    } on DioException catch (e) {
+      _log('❌ Görsel silme hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('Görsel silinemedi: ${e.message}'); //
     }
   }
 
 
-  Future<void> deleteProperty(int id) async { // [cite: 1360]
+  Future<void> deleteProperty(int id) async {
     try {
-      debugPrint('🗑️ Gayrimenkul siliniyor: $id'); // [cite: 1360]
-      await _apiClient.delete('${ApiConstants.properties}$id/'); // [cite: 1360]
-      debugPrint('✅ Gayrimenkul silindi'); // [cite: 1360]
-    } on DioException catch (e) { // [cite: 1360]
-      debugPrint('❌ Gayrimenkul silme hatası: ${e.response?.statusCode}'); // [cite: 1360]
-      throw Exception('Gayrimenkul silinemedi: ${e.message}'); // [cite: 1360]
+      _log('🗑️ Gayrimenkul silme isteği gönderiliyor: ID $id'); // Log eklendi
+      final response = await _apiClient.delete('${ApiConstants.properties}$id/');
+      _log('✅ Gayrimenkul silindi (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+    } on DioException catch (e) {
+      _log('❌ Gayrimenkul silme hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('Gayrimenkul silinemedi: ${e.message}');
     }
   }
 
-  Future<PropertyModel> updatePropertyStatus(int id, String status) async { // [cite: 1361]
+  Future<PropertyModel> updatePropertyStatus(int id, String status) async {
     try {
-      debugPrint('🔄 Gayrimenkul durumu güncelleniyor: $id -> $status'); // [cite: 1361]
-      final response = await _apiClient.patch( // [cite: 1361]
-        '${ApiConstants.properties}$id/', // [cite: 1361]
-        data: {'status': status}, // [cite: 1361]
+      _log('🔄 Gayrimenkul durumu güncelleme isteği gönderiliyor: ID $id -> $status'); // Log eklendi
+      final response = await _apiClient.patch(
+        '${ApiConstants.properties}$id/',
+        data: {'status': status},
       );
-      debugPrint('✅ Durum güncellendi'); // [cite: 1361]
-      return PropertyModel.fromJson(response.data); // [cite: 1361]
-    } on DioException catch (e) { // [cite: 1361]
-      debugPrint('❌ Durum güncelleme hatası: ${e.response?.statusCode}'); // [cite: 1361]
-      throw Exception('Durum güncellenemedi: ${e.message}'); // [cite: 1361]
+      _log('✅ Durum güncellendi (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+      return PropertyModel.fromJson(response.data);
+    } on DioException catch (e) {
+      _log('❌ Durum güncelleme hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('Durum güncellenemedi: ${e.message}');
     }
   }
 
-  Future<PropertyModel> updatePropertyPrice(int id, double price) async { // [cite: 1361]
-    try { // [cite: 1361]
-      debugPrint('💰 Gayrimenkul fiyatı güncelleniyor: $id -> $price'); // [cite: 1361]
-      final response = await _apiClient.patch( // [cite: 1361]
-        '${ApiConstants.properties}$id/', // [cite: 1362]
-        data: {'price': price}, // Use 'price' if that's the field name, adjust if needed // [cite: 1362]
+  Future<PropertyModel> updatePropertyPrice(int id, double price) async {
+    try {
+      _log('💰 Gayrimenkul fiyatı güncelleme isteği gönderiliyor: ID $id -> $price'); // Log eklendi //
+      final response = await _apiClient.patch(
+        '${ApiConstants.properties}$id/',
+        data: {'price': price}, // Use 'price' if that's the field name, adjust if needed
       );
-      debugPrint('✅ Fiyat güncellendi'); // [cite: 1362]
-      return PropertyModel.fromJson(response.data); // [cite: 1362]
-    } on DioException catch (e) { // [cite: 1362]
-      debugPrint('❌ Fiyat güncelleme hatası: ${e.response?.statusCode}'); // [cite: 1362]
-      throw Exception('Fiyat güncellenemedi: ${e.message}'); // [cite: 1362]
+      _log('✅ Fiyat güncellendi (Yanıt Kodu: ${response.statusCode})'); // Log eklendi
+      return PropertyModel.fromJson(response.data);
+    } on DioException catch (e) {
+      _log('❌ Fiyat güncelleme hatası: ${e.response?.statusCode}'); // Log eklendi
+      throw Exception('Fiyat güncellenemedi: ${e.message}');
     }
   }
 }

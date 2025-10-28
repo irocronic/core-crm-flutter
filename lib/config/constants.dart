@@ -1,8 +1,9 @@
 // lib/config/constants.dart
 
 class ApiConstants {
-  // Base URL - Backend'inizin IP'sini buraya yazın
-  static const String baseUrl = 'https://core-crm-ilk2.onrender.com/api/v1';
+  // static const String baseUrl = 'http://192.168.1.103:8000/api/v1';
+  // static const String baseUrl = 'https://core-crm-ilk2.onrender.com/api/v1';
+  static const String baseUrl = 'http://192.168.1.103:8000/api/v1';
 
   // ==========================================
   // 🔥 Auth Endpoints
