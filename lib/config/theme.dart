@@ -32,11 +32,10 @@ ThemeData buildLightTheme() {
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: primaryColor,
-      foregroundColor: Colors.white,
-      elevation: 0, // Daha modern görünüm için
-      titleTextStyle: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold),
+      foregroundColor: Colors.white, // İkonlar vs. için
+      elevation: 0,
+      titleTextStyle: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white), // Açık temada başlık rengi (Opsiyonel, foregroundColor yeterli olabilir)
     ),
-    // GÜNCELLENDİ: CardTheme -> CardThemeData
     cardTheme: CardThemeData(
       elevation: 1.0,
       margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
@@ -137,11 +136,20 @@ ThemeData buildDarkTheme() {
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: const Color(0xFF1E1E1E), // Koyu AppBar
-      foregroundColor: Colors.white,
+      foregroundColor: Colors.white, // İkonlar ve genel metin için
       elevation: 0,
-      titleTextStyle: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold),
+      // ------------------------------------
+      // DEĞİŞİKLİK BURADA: titleTextStyle'a renk eklendi
+      // ------------------------------------
+      titleTextStyle: GoogleFonts.lato(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Colors.white, // <<<--- BU SATIR EKLENDİ
+      ),
+      // ------------------------------------
+      // DEĞİŞİKLİK SONU
+      // ------------------------------------
     ),
-    // GÜNCELLENDİ: CardTheme -> CardThemeData
     cardTheme: CardThemeData(
       elevation: 1.0,
       margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),

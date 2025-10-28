@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["https://core-crm-e7484.web.app"],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600
+  }
+]

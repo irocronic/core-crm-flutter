@@ -6,6 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+// Yeni SelectedImage model importu
+import '../../data/models/selected_image.dart';
+
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/property_provider.dart';
@@ -139,7 +142,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         imageQuality: 85,
       );
       if (pickedFiles.isNotEmpty) {
-        final success = await provider.uploadImages(widget.propertyId, pickedFiles);
+        // XFile listesini SelectedImage listesine sar
+        final List<SelectedImage> uploadList = pickedFiles.map((f) => SelectedImage(file: f)).toList();
+        final success = await provider.uploadImages(widget.propertyId, uploadList);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -163,7 +168,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      // EKLENEN KOD: CustomDrawer buraya eklenmiştir.
+// EKLENEN KOD: CustomDrawer buraya eklenmiştir.
       drawer: const CustomDrawer(),
       appBar: AppBar(
         title: const Text('Gayrimenkul Detayı'),
@@ -275,14 +280,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      //******************************************
-                      // YENİ BUTONUN KARTI
-                      //******************************************
+//******************************************
+// YENİ BUTONUN KARTI
+//******************************************
                       _buildPaymentCalculatorCard(context, property),
                       const SizedBox(height: 24),
-                      //******************************************
-                      // YENİ KART SONU
-                      //******************************************
+//******************************************
+// YENİ KART SONU
+//******************************************
 
                       _buildSection(
                         context,
@@ -379,7 +384,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  // YENİ WIDGET: Ödeme Planı Hesaplayıcı Kartı
+// YENİ WIDGET: Ödeme Planı Hesaplayıcı Kartı
   Widget _buildPaymentCalculatorCard(BuildContext context, PropertyModel property) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -390,10 +395,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         ),
         child: InkWell(
           onTap: () {
-            // **** GÜNCELLEME BAŞLANGICI ****
-            // Navigasyon sırasında 'extra' olarak cashPrice'ı gönderiyoruz
+// **** GÜNCELLEME BAŞLANGICI ****
+// Navigasyon sırasında 'extra' olarak cashPrice'ı gönderiyoruz
             context.push('/properties/${property.id}/calculate-plan', extra: property.cashPrice);
-            // **** GÜNCELLEME SONU ****
+// **** GÜNCELLEME SONU ****
           },
           borderRadius: BorderRadius.circular(16),
           child: Container(

@@ -1,23 +1,23 @@
 // lib/features/properties/presentation/providers/property_provider.dart
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data'; //
-import 'package:file_picker/file_picker.dart'; // <-- Eklendi
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/property_model.dart';
 import '../../data/services/property_service.dart';
-import '../../data/models/project_model.dart'; //
-import '../../data/models/payment_plan_model.dart'; //
-import '../../data/models/property_stats_model.dart'; //
-// YENİ IMPORTLAR (Platform ve İndirme için)
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint; // <-- debugPrint eklendi
+import '../../data/models/project_model.dart';
+import '../../data/models/payment_plan_model.dart';
+import '../../data/models/property_stats_model.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:permission_handler/permission_handler.dart'; // İzinler için
-// ✨ YENİ Eklenen Import ✨
+import 'package:permission_handler/permission_handler.dart';
 import 'package:universal_html/html.dart' as html;
+// SelectedImage modeli (data katmanındaki tek kaynak)
+import '../../data/models/selected_image.dart';
 
 class PropertyProvider extends ChangeNotifier {
   final ApiClient _apiClient;
@@ -36,20 +36,19 @@ class PropertyProvider extends ChangeNotifier {
   int _currentPage = 1;
   bool _hasMore = true;
   String? _searchQuery;
-  int? _filterProjectId; // Proje filtresi burada tutuluyor
+  int? _filterProjectId;
   List<ProjectModel> _projects = [];
   PropertyStatisticsModel? _statistics;
   bool _isStatsLoading = false;
-  String? downloadedFilePath; // İndirilen dosya yolunu tutmak için (mobil)
+  String? downloadedFilePath;
 
-  // --- FİLTRE STATE'LERİ ---
+  // Filtre state'leri
   String? _filterStatus;
   String? _filterPropertyType;
   String? _filterRoomCount;
   String? _filterFacade;
   double? _filterMinArea;
   double? _filterMaxArea;
-  // --- FİLTRE STATE'LERİ SONU ---
 
   List<PropertyModel> get properties => _properties;
   PropertyModel? get selectedProperty => _selectedProperty;
@@ -62,20 +61,16 @@ class PropertyProvider extends ChangeNotifier {
   PropertyStatisticsModel? get statistics => _statistics;
   bool get isStatsLoading => _isStatsLoading;
 
-  // --- GETTER'LAR ---
   String? get filterStatus => _filterStatus;
   String? get filterPropertyType => _filterPropertyType;
   String? get filterRoomCount => _filterRoomCount;
   String? get filterFacade => _filterFacade;
   double? get filterMinArea => _filterMinArea;
   double? get filterMaxArea => _filterMaxArea;
-  // --- GETTER'LAR SONU ---
 
-  // ======================== DEBUG LOG Helper ========================
   void _log(String message) {
     debugPrint('[PropertyProvider] $message');
   }
-  // =================================================================
 
   Future<bool> createProject(Map<String, dynamic> data, XFile? projectImage,
       XFile? sitePlanImage) async {
@@ -86,7 +81,7 @@ class PropertyProvider extends ChangeNotifier {
       _log('Yeni proje oluşturuluyor...');
       final newProject = await _propertyService.createProject(
           data, projectImage, sitePlanImage);
-      _projects.insert(0, newProject); // Yeni projeyi listenin başına ekle
+      _projects.insert(0, newProject);
       _log('✅ Yeni proje başarıyla oluşturuldu: ${newProject.name}');
       _isLoading = false;
       notifyListeners();
@@ -101,9 +96,9 @@ class PropertyProvider extends ChangeNotifier {
   }
 
   Future<bool> downloadSampleCsv() async {
-    _isLoading = true; // State'i yönetmek için
+    _isLoading = true;
     _errorMessage = null;
-    downloadedFilePath = null; // Önceki yolu temizle
+    downloadedFilePath = null;
     notifyListeners();
     _log('📄 Örnek CSV şablonu indirme işlemi başlatılıyor...');
     try {
@@ -134,13 +129,13 @@ class PropertyProvider extends ChangeNotifier {
           _log('✅ İzin verildi.');
         }
 
-        final directory = await getTemporaryDirectory(); // Geçici dizin
+        final directory = await getTemporaryDirectory();
         final filePath = '${directory.path}/ornek_mulk_sablonu.csv';
         final file = File(filePath);
         _log('💾 Dosya şuraya kaydedilecek: $filePath');
         if (response.data is List<int>) {
           await file.writeAsBytes(response.data);
-          downloadedFilePath = filePath; // Kaydedilen yolu state'e ata
+          downloadedFilePath = filePath;
           _log("✅ Örnek CSV indirildi: $filePath");
         } else {
           _log('❌ İndirilen veri formatı beklenmiyor: ${response.data.runtimeType}');
@@ -166,7 +161,7 @@ class PropertyProvider extends ChangeNotifier {
     try {
       await _propertyService.uploadBulkPropertiesCsv(file);
       _log('✅ Toplu mülk CSV başarıyla yüklendi. Liste yenileniyor...');
-      await loadProperties(refresh: true); // Başarılı yükleme sonrası listeyi yenile
+      await loadProperties(refresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -187,7 +182,7 @@ class PropertyProvider extends ChangeNotifier {
     try {
       await _propertyService.bulkCreateProperties(properties);
       _log('✅ Mülkler başarıyla oluşturuldu. Liste yenileniyor...');
-      await loadProperties(refresh: true); // Yeniden yükle
+      await loadProperties(refresh: true);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -243,7 +238,6 @@ class PropertyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- loadProperties Metodu ---
   Future<void> loadProperties({bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
@@ -269,9 +263,7 @@ class PropertyProvider extends ChangeNotifier {
       _isLoadingMore = true;
     }
     _errorMessage = null;
-    // notifyListeners(); // Hemen listener çağırmak yerine try-catch sonrası çağır
 
-    // ======================== DEBUG LOG: Filtre Değerleri ========================
     _log('🔍 loadProperties - Uygulanacak Filtreler:');
     _log('   - Proje ID: $_filterProjectId');
     _log('   - Durum: $_filterStatus');
@@ -281,8 +273,7 @@ class PropertyProvider extends ChangeNotifier {
     _log('   - Min Alan: $_filterMinArea');
     _log('   - Max Alan: $_filterMaxArea');
     _log('   - Arama: $_searchQuery');
-    // ==========================================================================
-    notifyListeners(); // Filtre loglandıktan sonra listener'ı çağır
+    notifyListeners();
 
     try {
       final result = await _propertyService.getProperties(
@@ -310,7 +301,7 @@ class PropertyProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       _log('❌ Mülk yükleme hatası: $_errorMessage');
-      if(refresh) _properties = []; // Hata durumunda listeyi temizle (refresh ise)
+      if (refresh) _properties = [];
     } finally {
       _isLoading = false;
       _isLoadingMore = false;
@@ -319,7 +310,6 @@ class PropertyProvider extends ChangeNotifier {
   }
 
   Future<void> loadAvailableProperties({bool refresh = false}) async {
-    // ... (Mevcut kod - Log eklenebilir) ...
     if (refresh) {
       _currentPage = 1;
       _hasMore = true;
@@ -366,38 +356,33 @@ class PropertyProvider extends ChangeNotifier {
   }
 
   Future<void> searchProperties(String query) async {
-    _searchQuery = query.isEmpty ? null : query; // Boş query null olmalı
+    _searchQuery = query.isEmpty ? null : query;
     _log("🔎 Arama yapılıyor: '$_searchQuery'");
     await loadProperties(refresh: true);
   }
 
-  // --- FİLTRE AYARLAMA METOTLARI (loadProperties çağrısı kaldırıldı) ---
   void setFilterStatus(String? status) {
     _filterStatus = status;
     _log("⬇️ Durum filtresi ayarlandı: $status");
-    notifyListeners(); // Sadece state'i güncelle, yüklemeyi applyFilters yapacak
-    // await loadProperties(refresh: true); // <-- KALDIRILDI
+    notifyListeners();
   }
 
   void setFilterType(String? type) {
     _filterPropertyType = type;
     _log("⬇️ Tip filtresi ayarlandı: $type");
     notifyListeners();
-    // await loadProperties(refresh: true); // <-- KALDIRILDI
   }
 
   void setFilterRoomCount(String? count) {
     _filterRoomCount = count;
     _log("⬇️ Oda sayısı filtresi ayarlandı: $count");
     notifyListeners();
-    // await loadProperties(refresh: true); // <-- KALDIRILDI
   }
 
   void setFilterFacade(String? facade) {
     _filterFacade = facade;
     _log("⬇️ Cephe filtresi ayarlandı: $facade");
     notifyListeners();
-    // await loadProperties(refresh: true); // <-- KALDIRILDI
   }
 
   void setFilterArea(double? min, double? max) {
@@ -405,11 +390,8 @@ class PropertyProvider extends ChangeNotifier {
     _filterMaxArea = max;
     _log("⬇️ Alan filtresi ayarlandı: Min=$min, Max=$max");
     notifyListeners();
-    // await loadProperties(refresh: true); // <-- KALDIRILDI
   }
-  // --- FİLTRE AYARLAMA METOTLARI SONU ---
 
-  // *** YENİ METOT: Tüm filtreleri uygula ve yükle ***
   Future<void> applyAllFilters({
     String? status,
     String? propertyType,
@@ -425,14 +407,11 @@ class PropertyProvider extends ChangeNotifier {
     _filterFacade = facade;
     _filterMinArea = minArea;
     _filterMaxArea = maxArea;
-    // Proje ID ve arama sorgusu korunur.
-    notifyListeners(); // State güncellendiğini bildir
-    await loadProperties(refresh: true); // Veriyi yeniden yükle
+    notifyListeners();
+    await loadProperties(refresh: true);
   }
-  // *** YENİ METOT SONU ***
 
   Future<void> filterByProject(int? projectId) async {
-    // Proje filtresi uygulandığında diğer filtreleri temizle
     _searchQuery = null;
     _filterStatus = null;
     _filterPropertyType = null;
@@ -442,11 +421,10 @@ class PropertyProvider extends ChangeNotifier {
     _filterMaxArea = null;
     _filterProjectId = projectId;
     _log("⬇️ Proje filtresi ayarlandı: $projectId. Diğer filtreler temizlendi.");
-    notifyListeners(); // State değiştiğini bildir
-    await loadProperties(refresh: true); // Yeniden yükle
+    notifyListeners();
+    await loadProperties(refresh: true);
   }
 
-  // --- DÜZELTME: clearFilters metodu proje filtresini TEMİZLEMEZ ve loadProperties çağırır ---
   void clearFilters() {
     _searchQuery = null;
     _filterStatus = null;
@@ -457,12 +435,8 @@ class PropertyProvider extends ChangeNotifier {
     _filterMaxArea = null;
     _log("🚫 Tüm filtreler temizlendi (Proje filtresi hariç). Liste yenileniyor...");
     notifyListeners();
-    // Filtreleri temizledikten sonra verileri yeniden yükle
-    // Proje filtresi hala aktif olacağı için doğru liste yüklenecektir
     loadProperties(refresh: true);
   }
-  // --- DÜZELTME SONU ---
-
 
   Future<void> loadPropertyDetail(int id) async {
     _selectedProperty = null;
@@ -530,15 +504,15 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> uploadImages(int propertyId, List<XFile> imageFiles) async {
+  Future<bool> uploadImages(int propertyId, List<SelectedImage> selectedImages) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-    _log("🖼️ ${imageFiles.length} görsel yükleniyor: Mülk ID $propertyId");
+    _log("🖼️ ${selectedImages.length} görsel yükleniyor: Mülk ID $propertyId");
     try {
-      await _propertyService.uploadImages(propertyId, imageFiles);
+      await _propertyService.uploadImages(propertyId, selectedImages);
       _log("✅ Görseller yüklendi. Mülk detayı yenileniyor...");
-      await loadPropertyDetail(propertyId); // Detayı yenile
+      await loadPropertyDetail(propertyId);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -573,8 +547,8 @@ class PropertyProvider extends ChangeNotifier {
         fileBytes: fileBytes,
       );
       _log("✅ Belge yüklendi. Mülk detayı yenileniyor...");
-      await loadPropertyDetail(propertyId); // Detayı yenile
-      _isLoading = false; //
+      await loadPropertyDetail(propertyId);
+      _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
@@ -594,7 +568,7 @@ class PropertyProvider extends ChangeNotifier {
     try {
       await _propertyService.createPaymentPlan(propertyId, data);
       _log("✅ Ödeme planı oluşturuldu. Mülk detayı yenileniyor...");
-      await loadPropertyDetail(propertyId); // Detayı yenile
+      await loadPropertyDetail(propertyId);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -635,7 +609,7 @@ class PropertyProvider extends ChangeNotifier {
     try {
       await _propertyService.deleteDocument(documentId);
       _log("✅ Belge silindi. Mülk detayı yenileniyor...");
-      await loadPropertyDetail(propertyId); // Detayı yenile
+      await loadPropertyDetail(propertyId);
       return true;
     } catch (e) {
       _errorMessage = "Belge silinemedi: $e";
@@ -654,7 +628,7 @@ class PropertyProvider extends ChangeNotifier {
     try {
       await _propertyService.deletePaymentPlan(planId);
       _log("✅ Ödeme planı silindi. Mülk detayı yenileniyor...");
-      await loadPropertyDetail(propertyId); // Detayı yenile
+      await loadPropertyDetail(propertyId);
       return true;
     } catch (e) {
       _errorMessage = "Ödeme planı silinemedi: $e";
@@ -673,7 +647,7 @@ class PropertyProvider extends ChangeNotifier {
     try {
       await _propertyService.deleteImage(imageId);
       _log("✅ Görsel silindi. Mülk detayı yenileniyor...");
-      await loadPropertyDetail(propertyId); // Detayı yenile
+      await loadPropertyDetail(propertyId);
       return true;
     } catch (e) {
       _errorMessage = "Görsel silinemedi: $e";

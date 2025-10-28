@@ -3,16 +3,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart'; // <-- YENİ: Görsel seçimi için eklendi
+import 'dart:io'; // <-- YENİ: Dosya işlemleri için eklendi
+import 'package:flutter/foundation.dart' show kIsWeb; // <-- YENİ: Web platformu kontrolü için eklendi
 
 import '../../../../core/utils/validators.dart';
 import '../providers/property_provider.dart';
 import '../../data/models/project_model.dart';
-// EKLENEN KOD: CustomDrawer bileşenini içe aktarma
-import '../../../../shared/widgets/custom_drawer.dart';
+import '../../../../shared/widgets/custom_drawer.dart'; // EKLENEN KOD: CustomDrawer bileşenini içe aktarma
+// YENİ IMPORT: PropertyImage modeli (görsel tipi için)
+import '../../data/models/property_model.dart' show PropertyImage;
+// YENİ IMPORT: SelectedImage artık data/models altında
+import '../../data/models/selected_image.dart';
 
 class PropertyFormScreen extends StatefulWidget {
   final int? propertyId;
-
   const PropertyFormScreen({
     super.key,
     this.propertyId,
@@ -34,7 +39,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   final _cashPriceController = TextEditingController();
   final _installmentPriceController = TextEditingController();
   final _descriptionController = TextEditingController();
-  // GÜNCELLEME: Artık proje seçildiğinde otomatik dolacaklar
   final _islandController = TextEditingController();
   final _parcelController = TextEditingController();
 
@@ -45,17 +49,27 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   String _selectedFacade = 'GUNEY';
   String _selectedRoomCount = '1+1';
 
+  // --- YENİ STATE'LER ---
+  final ImagePicker _picker = ImagePicker();
+  List<SelectedImage> _selectedImages = []; // Seçilen görselleri tutacak liste
+  // --- YENİ STATE'LER SONU ---
+
+
   bool get isEditing => widget.propertyId != null;
   bool _isLoading = false;
+  // GÜNCELLEME: Yükleniyor durumunu daha detaylı takip etmek için
+  bool _isLoadingData = false; // Veri yükleme durumu
+  bool _isSaving = false; // Kaydetme durumu
 
   @override
   void initState() {
     super.initState();
     final provider = context.read<PropertyProvider>();
-    provider.loadProjects(); // Load projects for the dropdown
+    provider.loadProjects(); // Projeleri yükle
 
     if (isEditing) {
-      _isLoading = true;
+      // GÜNCELLEME: _isLoadingData olarak değiştirildi
+      _isLoadingData = true;
       _loadPropertyData();
     }
   }
@@ -67,19 +81,16 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
 
       final property = provider.selectedProperty;
       if (property != null && mounted) {
-        // Projeyi de bulup state'e atayalım ki otomatik doldurma çalışsın
         final selectedProject = provider.projects.firstWhere(
               (p) => p.id == property.project.id,
-          orElse: () => ProjectModel(id: 0, name: '', block: null), // Default değer eklendi
+          orElse: () => ProjectModel(id: 0, name: '', block: null),
         );
 
         setState(() {
           _selectedProjectId = property.project.id;
-          // Otomatik doldurma
           _islandController.text = selectedProject.island ?? '';
           _parcelController.text = selectedProject.parcel ?? '';
           _blockController.text = property.block.isNotEmpty ? property.block : (selectedProject.block ?? '');
-
           _floorController.text = property.floor.toString();
           _unitNumberController.text = property.unitNumber;
           _grossAreaController.text = property.grossAreaM2.toString();
@@ -92,14 +103,18 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           _selectedStatus = property.status;
           _selectedFacade = property.facade;
           _selectedRoomCount = property.roomCount;
-          _isLoading = false;
+          // GÜNCELLEME: _isLoadingData olarak değiştirildi
+          _isLoadingData = false;
+          // Mevcut görselleri forma eklemeyeceğiz, düzenleme ekranında ayrı yönetilebilir.
         });
       } else if (mounted) {
-        setState(() => _isLoading = false);
+        // GÜNCELLEME: _isLoadingData olarak değiştirildi
+        setState(() => _isLoadingData = false);
         _showErrorSnackBar('Gayrimenkul bilgileri yüklenemedi.');
       }
     });
   }
+
 
   @override
   void dispose() {
@@ -116,6 +131,37 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     super.dispose();
   }
 
+  // --- YENİ METOT: Görsel Seçme ---
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (pickedFiles.isNotEmpty && mounted) {
+        setState(() {
+          _selectedImages.addAll(
+              pickedFiles.map((file) => SelectedImage(file: file)).toList()
+          );
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Görsel seçilemedi: $e');
+    }
+  }
+  // --- YENİ METOT SONU ---
+
+  // --- YENİ METOT: Görsel Kaldırma ---
+  void _removeImage(int index) {
+    if (mounted) {
+      setState(() {
+        _selectedImages.removeAt(index);
+      });
+    }
+  }
+  // --- YENİ METOT SONU ---
+
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -129,7 +175,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // GÜNCELLEME: island ve parcel artık gönderilmiyor
+    // GÜNCELLEME: _isSaving olarak değiştirildi
+    setState(() => _isSaving = true);
+
     final data = <String, dynamic>{
       'project': _selectedProjectId,
       'block': _blockController.text.trim(),
@@ -142,8 +190,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           ? double.tryParse(_installmentPriceController.text.trim())
           : null,
       'description': _descriptionController.text.trim(),
-      // 'island': _islandController.text.trim(), // Kaldırıldı
-      // 'parcel': _parcelController.text.trim(), // Kaldırıldı
       'property_type': _selectedPropertyType,
       'status': _selectedStatus,
       'facade': _selectedFacade,
@@ -152,47 +198,82 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
 
     final provider = context.read<PropertyProvider>();
     bool success = false;
+    int? createdPropertyId; // Yeni oluşturulan mülkün ID'sini tutmak için
 
-    if (isEditing) {
-      success = await provider.updateProperty(widget.propertyId!, data);
-    } else {
-      success = await provider.createProperty(data);
-    }
-
-    if (!mounted) return;
-
-    if (success) {
-      // ✅ HATA DÜZELTMESİ: Geri gidilebiliyorsa pop yap, gidilemiyorsa ana sayfaya yönlendir.
-      if (context.canPop()) {
-        context.pop();
+    try {
+      if (isEditing) {
+        success = await provider.updateProperty(widget.propertyId!, data);
+        if (success) createdPropertyId = widget.propertyId; // Düzenlemede ID zaten var
       } else {
-        context.go('/properties');
+        success = await provider.createProperty(data);
+        if (success) {
+          // Başarıyla oluşturulduysa, son eklenen mülkün ID'sini al (varsayım: liste başa ekleniyor)
+          if (provider.properties.isNotEmpty) {
+            createdPropertyId = provider.properties.first.id;
+          }
+        }
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              isEditing ? 'Gayrimenkul güncellendi' : 'Gayrimenkul eklendi'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      _showErrorSnackBar(provider.errorMessage ?? 'İşlem başarısız oldu');
+      // --- YENİ KISIM: Görselleri Yükleme ---
+      if (success && createdPropertyId != null && _selectedImages.isNotEmpty) {
+        // Doğrudan SelectedImage listesi gönder
+        bool imageSuccess = await provider.uploadImages(createdPropertyId, _selectedImages);
+        if (!imageSuccess && mounted) {
+          // Görsel yükleme başarısız olursa kullanıcıyı bilgilendir ama işlem devam etsin
+          _showErrorSnackBar(provider.errorMessage ?? 'Görseller yüklenirken bir sorun oluştu.');
+          // Başarılı saymaya devam edebiliriz, mülk kaydedildi.
+        }
+      }
+      // --- YENİ KISIM SONU ---
+
+      if (!mounted) return;
+
+      if (success) {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          // Normalde liste ekranına yönlendirir, ama detay daha mantıklı olabilir
+          // context.go('/properties');
+          if (createdPropertyId != null) {
+            context.go('/properties/$createdPropertyId'); // Oluşturulan/güncellenen mülkün detayına git
+          } else {
+            context.go('/properties'); // Fallback
+          }
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                isEditing ? 'Gayrimenkul güncellendi' : 'Gayrimenkul eklendi'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        _showErrorSnackBar(provider.errorMessage ?? 'İşlem başarısız oldu');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Hata: ${e.toString()}');
+    } finally {
+      if (mounted) {
+        // GÜNCELLEME: _isSaving olarak değiştirildi
+        setState(() => _isSaving = false);
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PropertyProvider>();
 
     return Scaffold(
-      // EKLENEN KOD: CustomDrawer buraya eklenmiştir.
       drawer: const CustomDrawer(),
       appBar: AppBar(
         title:
         Text(isEditing ? 'Gayrimenkulü Düzenle' : 'Yeni Gayrimenkul Ekle'),
       ),
-      body: _isLoading
+      // GÜNCELLEME: _isLoadingData olarak değiştirildi
+      body: _isLoadingData
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -220,11 +301,15 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                       final selectedProject = provider.projects.firstWhere((p) => p.id == value);
                       _islandController.text = selectedProject.island ?? '';
                       _parcelController.text = selectedProject.parcel ?? '';
-                      _blockController.text = selectedProject.block ?? '';
+                      // Projenin genel bloğu varsa ve mülk bloğu boşsa doldur
+                      if(_blockController.text.trim().isEmpty) {
+                        _blockController.text = selectedProject.block ?? '';
+                      }
                     } else {
                       _islandController.clear();
                       _parcelController.clear();
-                      _blockController.clear();
+                      // Proje seçimi kaldırılınca blok temizlenmeli mi? Karar verilmeli.
+                      // _blockController.clear();
                     }
                   });
                 },
@@ -232,22 +317,30 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 value == null ? 'Lütfen bir proje seçin' : null,
               ),
               const SizedBox(height: 16),
-              // GÜNCELLEME: Ada, Pafta ve Blok bilgileri readOnly
+              // Ada, Pafta (ReadOnly)
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: _islandController,
-                      readOnly: true,
-                      decoration: const InputDecoration(labelText: 'Ada'),
+                      readOnly: true, // Düzenlenemez
+                      decoration: InputDecoration(
+                        labelText: 'Ada',
+                        filled: true, // Arkaplanı gri yapmak için
+                        fillColor: Colors.grey[200], // Gri arkaplan
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
                       controller: _parcelController,
-                      readOnly: true,
-                      decoration: const InputDecoration(labelText: 'Pafta'),
+                      readOnly: true, // Düzenlenemez
+                      decoration: InputDecoration(
+                        labelText: 'Pafta',
+                        filled: true, // Arkaplanı gri yapmak için
+                        fillColor: Colors.grey[200], // Gri arkaplan
+                      ),
                     ),
                   ),
                 ],
@@ -369,6 +462,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                       decoration: const InputDecoration(
                           labelText: 'Vadeli Fiyat (₺)', suffixText: '₺'),
                       keyboardType: TextInputType.number,
+                      // Vadeli fiyat zorunlu değilse validator kaldırılabilir
+                      // validator: (value) => ...
                     ),
                   ),
                 ],
@@ -460,12 +555,21 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 ),
                 maxLines: 4,
               ),
+
+              // --- YENİ KISIM: Görsel Ekleme ---
+              const SizedBox(height: 24),
+              _buildSectionTitle('Görseller'),
+              _buildImagePickerSection(),
+              // --- YENİ KISIM SONU ---
+
               const SizedBox(height: 24),
               SizedBox(
                 height: 50,
+                // GÜNCELLEME: _isSaving olarak değiştirildi
                 child: ElevatedButton(
-                  onPressed: provider.isLoading ? null : _handleSubmit,
-                  child: provider.isLoading
+                  onPressed: _isSaving ? null : _handleSubmit,
+                  // GÜNCELLEME: _isSaving olarak değiştirildi
+                  child: _isSaving
                       ? const SizedBox(
                     height: 20,
                     width: 20,
@@ -481,4 +585,113 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       ),
     );
   }
-}
+
+  // --- YENİ WIDGET: Başlık ---
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).primaryColor,
+        ),
+      ),
+    );
+  }
+  // --- YENİ WIDGET SONU ---
+
+  // --- YENİ WIDGET: Görsel Seçme Alanı ---
+  Widget _buildImagePickerSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _pickImages,
+          icon: const Icon(Icons.add_photo_alternate_outlined),
+          label: const Text('Görsel Seç'),
+        ),
+        const SizedBox(height: 16),
+        if (_selectedImages.isNotEmpty)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: _selectedImages.length,
+            itemBuilder: (context, index) {
+              final selectedImage = _selectedImages[index];
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: kIsWeb
+                        ? Image.network(selectedImage.file.path, fit: BoxFit.cover)
+                        : Image.file(File(selectedImage.file.path), fit: BoxFit.cover),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: InkWell(
+                      onTap: () => _removeImage(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ),
+                  // GÖRSEL TİPİ SEÇİMİ (Basit Dropdown)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedImage.type,
+                          isDense: true,
+                          isExpanded: true,
+                          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18,),
+                          dropdownColor: Colors.black87,
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                          items: const [
+                            // Backend'deki ImageType enum değerleri ile eşleşmeli
+                            DropdownMenuItem(value: 'INTERIOR', child: Text('İç Görünüm')),
+                            DropdownMenuItem(value: 'EXTERIOR', child: Text('Dış Görünüm')),
+                            DropdownMenuItem(value: 'FLOOR_PLAN', child: Text('Kat Planı')),
+                            DropdownMenuItem(value: 'SITE_PLAN', child: Text('Vaziyet Planı')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null && mounted) {
+                              setState(() {
+                                selectedImage.type = value;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+      ],
+    );
+  }
+// --- YENİ WIDGET SONU ---
+
+} // Sınıf sonu
