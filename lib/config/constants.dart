@@ -12,7 +12,6 @@ class ApiConstants {
   static const String logout = '/users/auth/logout/';
   static const String register = '/users/auth/register/';
   static const String refresh = '/users/auth/refresh/';
-  static const String refreshToken = '/users/auth/token/refresh/';
   static const String profile = '/users/profile/';
   static const String updateProfile = '/users/update_profile/';
   static const String changePassword = '/users/change_password/';
@@ -39,7 +38,6 @@ class ApiConstants {
   // 🔥 Activity Endpoints
   // ==========================================
   static const String activities = '/crm/activities/';
-  // ✅ YENİ ENDPOINT
   static const String upcomingFollowUps = '/crm/activities/upcoming_followups/';
 
   // ==========================================
@@ -73,6 +71,10 @@ class ApiConstants {
   // ==========================================
   static const String reports = '/sales/reports/';
   static const String generateReport = '/sales/reports/generate/';
+
+  /// ✅ YENİ: Export endpoint için helper metot
+  /// Kullanım: ApiConstants.exportReport('123') => '/sales/reports/123/export/'
+  static String exportReport(String reportId) => '/sales/reports/$reportId/export/';
 
   // ==========================================
   // 🔥 Appointment Endpoints

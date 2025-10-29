@@ -1,3 +1,5 @@
+// lib/features/reports/presentation/screens/reports_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/custom_drawer.dart';
@@ -23,37 +25,43 @@ class _ReportsScreenState extends State<ReportsScreen> {
     });
   }
 
+  // ✅ FIX: Dialog'dan dönen değeri await ile al
   void _showFilterDialog() async {
     final ReportFilterEntity? filter = await showDialog<ReportFilterEntity>(
       context: context,
       builder: (dialogContext) => ReportFilterDialog(
         currentFilter: context.read<SalesReportProvider>().currentFilter,
         onApplyFilter: (selectedFilter) {
-          Navigator.of(dialogContext, rootNavigator: true).pop(selectedFilter);
+          // Bu callback artık kullanılmıyor, dialog pop ile filter döndürüyor
         },
       ),
       useRootNavigator: true,
     );
-    if (filter != null) {
+
+    // ✅ FIX: Dialog kapatıldıktan sonra filter null değilse uygula
+    if (filter != null && mounted) {
       context.read<SalesReportProvider>().updateFilter(filter);
     }
   }
 
+  // ✅ FIX: Generate dialog için aynı düzeltme
   void _showGenerateReportDialog() async {
     final ReportFilterEntity? filter = await showDialog<ReportFilterEntity>(
       context: context,
       builder: (dialogContext) => ReportFilterDialog(
         currentFilter: context.read<SalesReportProvider>().currentFilter,
         onApplyFilter: (selectedFilter) {
-          Navigator.of(dialogContext, rootNavigator: true).pop(selectedFilter);
+          // Bu callback artık kullanılmıyor, dialog pop ile filter döndürüyor
         },
         isGenerateMode: true,
       ),
       useRootNavigator: true,
     );
 
+    // ✅ FIX: Dialog kapatıldı, filter null ise hiçbir şey yapma
     if (filter == null || !mounted) return;
 
+    // Loading dialog göster
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -78,12 +86,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final provider = context.read<SalesReportProvider>();
     final report = await provider.generateReport(filter: filter);
 
+    // Loading dialog'u kapat
     if (mounted) {
       Navigator.of(context, rootNavigator: true).pop();
     }
 
     if (!mounted) return;
 
+    // Sonuç mesajı göster
     if (report != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -99,7 +109,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             provider.errorMessage ?? 'Rapor oluşturulamadı',
           ),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -213,6 +223,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               itemBuilder: (context, index) {
                 final report = provider.reports[index];
                 return SalesReportCard(
+                  key: ValueKey(report.id), // ✅ BONUS: Performans iyileştirmesi
                   report: report,
                   onTap: () {
                     Navigator.push(

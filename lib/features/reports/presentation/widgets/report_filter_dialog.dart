@@ -21,7 +21,6 @@ class ReportFilterDialog extends StatefulWidget {
 
 class _ReportFilterDialogState extends State<ReportFilterDialog> {
   late ReportPeriod _selectedPeriod;
-  // YENİ: Rapor türü için state
   ReportType _selectedReportType = ReportType.salesSummary;
   DateTime? _startDate;
   DateTime? _endDate;
@@ -73,6 +72,44 @@ class _ReportFilterDialogState extends State<ReportFilterDialog> {
     }
   }
 
+  // ✅ FIX: Validation ve dialog kapatma işlemini ayır
+  void _handleApplyFilter() {
+    // Validation
+    if (_selectedPeriod == ReportPeriod.custom &&
+        (_startDate == null || _endDate == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen başlangıç ve bitiş tarihlerini seçin'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Tarih kontrolü - başlangıç bitiş tarihinden büyük olamaz
+    if (_startDate != null && _endDate != null && _startDate!.isAfter(_endDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Başlangıç tarihi bitiş tarihinden sonra olamaz'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final filter = ReportFilterEntity(
+      period: _selectedPeriod,
+      startDate: _startDate,
+      endDate: _endDate,
+      category: _category,
+      reportTypeToGenerate: _selectedReportType,
+    );
+
+    // ✅ FIX: Önce dialog'u kapat, sonra callback'i çağır
+    // Navigator.pop ile dialog kapatılıyor ve filter döndürülüyor
+    Navigator.of(context, rootNavigator: true).pop(filter);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -82,7 +119,6 @@ class _ReportFilterDialogState extends State<ReportFilterDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // GÜNCELLEME: Sadece rapor oluştururken gösterilecek
             if (widget.isGenerateMode) ...[
               Text(
                 'Rapor Türü',
@@ -93,6 +129,10 @@ class _ReportFilterDialogState extends State<ReportFilterDialog> {
               const SizedBox(height: 8),
               DropdownButtonFormField<ReportType>(
                 value: _selectedReportType,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
                 items: const [
                   DropdownMenuItem(
                     value: ReportType.salesSummary,
@@ -119,7 +159,6 @@ class _ReportFilterDialogState extends State<ReportFilterDialog> {
               const Divider(),
               const SizedBox(height: 8),
             ],
-
             Text(
               'Zaman Periyodu',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -161,7 +200,20 @@ class _ReportFilterDialogState extends State<ReportFilterDialog> {
                   _startDate != null
                       ? 'Başlangıç: ${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
                       : 'Başlangıç Tarihi Seçin',
+                  style: TextStyle(
+                    color: _startDate == null ? Colors.grey : null,
+                  ),
                 ),
+                trailing: _startDate != null
+                    ? IconButton(
+                  icon: const Icon(Icons.clear, size: 20),
+                  onPressed: () {
+                    setState(() {
+                      _startDate = null;
+                    });
+                  },
+                )
+                    : null,
                 onTap: () => _selectDate(context, true),
                 dense: true,
               ),
@@ -172,7 +224,20 @@ class _ReportFilterDialogState extends State<ReportFilterDialog> {
                   _endDate != null
                       ? 'Bitiş: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
                       : 'Bitiş Tarihi Seçin',
+                  style: TextStyle(
+                    color: _endDate == null ? Colors.grey : null,
+                  ),
                 ),
+                trailing: _endDate != null
+                    ? IconButton(
+                  icon: const Icon(Icons.clear, size: 20),
+                  onPressed: () {
+                    setState(() {
+                      _endDate = null;
+                    });
+                  },
+                )
+                    : null,
                 onTap: () => _selectDate(context, false),
                 dense: true,
               ),
@@ -186,30 +251,7 @@ class _ReportFilterDialogState extends State<ReportFilterDialog> {
           child: const Text('İptal'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_selectedPeriod == ReportPeriod.custom &&
-                (_startDate == null || _endDate == null)) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Lütfen başlangıç ve bitiş tarihlerini seçin'),
-                ),
-              );
-              return;
-            }
-
-            final filter = ReportFilterEntity(
-              period: _selectedPeriod,
-              startDate: _startDate,
-              endDate: _endDate,
-              category: _category,
-              // YENİ: Seçilen rapor türünü de filtreye ekle
-              reportTypeToGenerate: _selectedReportType,
-            );
-
-            widget.onApplyFilter(filter);
-            // DİKKAT! Sadece parent showDialog'un sonucunu kullanacağız,
-            // burada pop çağırmıyoruz (parent fonksiyon pop ile kapatacak).
-          },
+          onPressed: _handleApplyFilter, // ✅ FIX: Ayrı fonksiyon çağrılıyor
           child: Text(widget.isGenerateMode ? 'Oluştur' : 'Uygula'),
         ),
       ],

@@ -1,4 +1,4 @@
-// /lib/features/reports/data/repositories/sales_report_repository_impl.dart
+// lib/features/reports/data/repositories/sales_report_repository_impl.dart
 
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
@@ -11,6 +11,7 @@ import '../datasources/sales_report_remote_datasource.dart';
 class SalesReportRepositoryImpl implements SalesReportRepository {
   final SalesReportRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;
+
   SalesReportRepositoryImpl({
     required this.remoteDataSource,
     required this.networkInfo,
@@ -24,11 +25,13 @@ class SalesReportRepositoryImpl implements SalesReportRepository {
       try {
         final reports = await remoteDataSource.getSalesReports(filter);
         return Right(reports);
-      } on ServerException {
-        return Left(ServerFailure());
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure('Beklenmeyen hata: ${e.toString()}'));
       }
     } else {
-      return Left(NetworkFailure());
+      return const Left(NetworkFailure('İnternet bağlantınızı kontrol edin'));
     }
   }
 
@@ -40,28 +43,51 @@ class SalesReportRepositoryImpl implements SalesReportRepository {
       try {
         final report = await remoteDataSource.getSalesReportById(id);
         return Right(report);
-      } on ServerException {
-        return Left(ServerFailure());
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure('Beklenmeyen hata: ${e.toString()}'));
       }
     } else {
-      return Left(NetworkFailure());
+      return const Left(NetworkFailure('İnternet bağlantınızı kontrol edin'));
     }
   }
 
-  // ✅ YENİ METOT İMPLEMENTASYONU
   @override
   Future<Either<Failure, SalesReportEntity>> generateReport(
-      ReportFilterEntity filter) async {
+      ReportFilterEntity filter,
+      ) async {
     if (await networkInfo.isConnected) {
       try {
-        final report =
-        await remoteDataSource.generateReport(filter.toApiData());
+        final report = await remoteDataSource.generateReport(filter.toApiData());
         return Right(report);
-      } on ServerException {
-        return Left(ServerFailure('Rapor oluşturulamadı.'));
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure('Rapor oluşturulamadı: ${e.toString()}'));
       }
     } else {
-      return Left(NetworkFailure());
+      return const Left(NetworkFailure('İnternet bağlantınızı kontrol edin'));
+    }
+  }
+
+  /// ✅ YENİ: Export Report Implementation
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> exportReport(
+      String reportId,
+      String format,
+      ) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.exportReport(reportId, format);
+        return Right(result);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure('Rapor dışa aktarılamadı: ${e.toString()}'));
+      }
+    } else {
+      return const Left(NetworkFailure('İnternet bağlantınızı kontrol edin'));
     }
   }
 }

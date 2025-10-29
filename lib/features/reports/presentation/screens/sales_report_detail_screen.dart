@@ -1,21 +1,27 @@
-// /lib/features/reports/presentation/screens/sales_report_detail_screen.dart
+// lib/features/reports/presentation/screens/sales_report_detail_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:open_file/open_file.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io';
+import 'dart:typed_data';
 import '../../domain/entities/sales_report_entity.dart';
 import '../providers/sales_report_provider.dart';
 
 class SalesReportDetailScreen extends StatefulWidget {
   final String reportId;
+
   const SalesReportDetailScreen({
     super.key,
     required this.reportId,
   });
+
   @override
-  State<SalesReportDetailScreen> createState() =>
-      _SalesReportDetailScreenState();
+  State<SalesReportDetailScreen> createState() => _SalesReportDetailScreenState();
 }
 
 class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
@@ -27,11 +33,336 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
     });
   }
 
+  /// Export dialog göster
+  void _showExportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.file_download, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Raporu Dışa Aktar'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Raporu hangi formatta indirmek istersiniz?',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 32),
+              title: const Text('PDF'),
+              subtitle: const Text('Taşınabilir Belge Formatı'),
+              trailing: const Icon(Icons.chevron_right),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.grey.shade300),
+              ),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _exportReportLocal(context, 'pdf');
+              },
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.table_chart, color: Colors.green, size: 32),
+              title: const Text('Excel'),
+              subtitle: const Text('Microsoft Excel Formatı'),
+              trailing: const Icon(Icons.chevron_right),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.grey.shade300),
+              ),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _exportReportLocal(context, 'excel');
+              },
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.description, color: Colors.blue, size: 32),
+              title: const Text('CSV'),
+              subtitle: const Text('Virgülle Ayrılmış Değerler'),
+              trailing: const Icon(Icons.chevron_right),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.grey.shade300),
+              ),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _exportReportLocal(context, 'csv');
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('İptal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ FIXED: Flutter'dan direkt export işlemi
+  Future<void> _exportReportLocal(BuildContext context, String format) async {
+    final provider = context.read<SalesReportProvider>();
+    final report = provider.selectedReport;
+
+    if (report == null) {
+      _showErrorDialog(context, 'Rapor bulunamadı');
+      return;
+    }
+
+    // Loading dialog göster
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: Center(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('$format dosyası hazırlanıyor...'),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Bu işlem birkaç saniye sürebilir',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Export işlemini yap
+    final result = await provider.exportReportLocal(
+      report: report,
+      format: format,
+    );
+
+    if (context.mounted) {
+      Navigator.pop(context); // Loading dialog'u kapat
+    }
+
+    if (!context.mounted) return;
+
+    if (result != null) {
+      _showSuccessDialog(context, result);
+    } else {
+      _showErrorDialog(context, provider.errorMessage ?? 'Export başarısız');
+    }
+  }
+
+  /// ✅ FIXED: ExportResult ile type-safe success dialog
+  void _showSuccessDialog(BuildContext context, ExportResult result) {
+    final isWeb = result.isWeb;
+    final fileName = result.fileName;
+    final fileData = result.data;
+    final format = result.format;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Başarılı'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(isWeb
+                ? '$format dosyası tarayıcınıza indirildi!'
+                : '$format dosyası kaydedildi!'),
+            const SizedBox(height: 8),
+            Text(
+              fileName,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (isWeb) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'ℹ️ Dosya tarayıcınızın indirmeler klasörüne kaydedildi.',
+                style: TextStyle(fontSize: 10, color: Colors.blue),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tamam'),
+          ),
+          // ✅ FIXED: Sadece mobilde "Aç" ve "Paylaş" butonları
+          if (!isWeb && result.isFile) ...[
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  final file = result.asFile();
+                  if (file != null) {
+                    await OpenFile.open(file.path);
+                    debugPrint('✅ [UI] Dosya açıldı: ${file.path}');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Dosya açılamadı: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Aç'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  final file = result.asFile();
+                  if (file != null) {
+                    await Share.shareXFiles(
+                      [XFile(file.path)],
+                      subject: 'Satış Raporu',
+                      text: 'İlişikteki satış raporunu paylaşıyorum.',
+                    );
+                    debugPrint('✅ [UI] Dosya paylaşıldı: ${file.path}');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Paylaşım hatası: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.share),
+              label: const Text('Paylaş'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Hata dialog'u
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Hata'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tamam'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rapor Detayı'),
+        actions: [
+          // Export butonu
+          Consumer<SalesReportProvider>(
+            builder: (context, provider, child) {
+              if (provider.isExporting) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                );
+              }
+
+              return IconButton(
+                icon: const Icon(Icons.file_download),
+                onPressed: provider.selectedReport != null
+                    ? () => _showExportDialog(context)
+                    : null,
+                tooltip: 'Raporu Dışa Aktar',
+              );
+            },
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'refresh':
+                  context.read<SalesReportProvider>().loadReportById(widget.reportId);
+                  break;
+                case 'export':
+                  _showExportDialog(context);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'refresh',
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh),
+                    SizedBox(width: 8),
+                    Text('Yenile'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export',
+                child: Row(
+                  children: [
+                    Icon(Icons.file_download),
+                    SizedBox(width: 8),
+                    Text('Dışa Aktar'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Consumer<SalesReportProvider>(
         builder: (context, provider, child) {
@@ -77,7 +408,6 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
             return const Center(child: Text('Rapor bulunamadı'));
           }
 
-          // GÜNCELLEME: Rapor türüne göre doğru widget'ı göster
           return SingleChildScrollView(
             child: _buildReportBody(context, report),
           );
@@ -86,9 +416,8 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
     );
   }
 
-  // YENİ: Rapor türüne göre body oluşturan ana fonksiyon
   Widget _buildReportBody(BuildContext context, SalesReportEntity report) {
-    switch(report.reportType) {
+    switch (report.reportType) {
       case ReportType.salesSummary:
         return _buildSalesSummaryReport(context, report);
       case ReportType.repPerformance:
@@ -100,10 +429,8 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
     }
   }
 
-  // 1. Genel Satış Özeti Raporu Widget'ı
   Widget _buildSalesSummaryReport(BuildContext context, SalesReportEntity report) {
     final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-    final dateFormat = DateFormat('dd MMMM yyyy', 'tr_TR');
     final stats = report.statistics;
 
     final totalSales = (stats['payments']?['total_collected'] as num?)?.toDouble() ?? 0.0;
@@ -140,7 +467,6 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
                   ),
                 ],
               ),
-              // İleride diğer detaylar buraya eklenebilir.
             ],
           ),
         )
@@ -148,7 +474,6 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
     );
   }
 
-  // 2. Temsilci Performans Raporu Widget'ı
   Widget _buildRepPerformanceReport(BuildContext context, SalesReportEntity report) {
     final stats = report.statistics;
     final List<dynamic> performanceData = stats['rep_performance'] ?? [];
@@ -218,7 +543,6 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
     );
   }
 
-  // 3. Müşteri Kaynak Raporu Widget'ı
   Widget _buildCustomerSourceReport(BuildContext context, SalesReportEntity report) {
     final stats = report.statistics;
     final List<dynamic> sourceData = stats['source_data'] ?? [];
@@ -278,7 +602,6 @@ class _SalesReportDetailScreenState extends State<SalesReportDetailScreen> {
     );
   }
 
-  // Ortak Widget'lar
   Widget _buildHeaderCard(BuildContext context, SalesReportEntity report, String value) {
     final dateFormat = DateFormat('dd MMMM yyyy', 'tr_TR');
     return Container(

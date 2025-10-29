@@ -17,7 +17,6 @@ import 'core/services/notification_service.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/customers/presentation/providers/customer_provider.dart';
 import 'features/customers/presentation/providers/activity_provider.dart';
-// ✅ YENİ IMPORT
 import 'features/customers/presentation/providers/note_provider.dart';
 import 'features/properties/presentation/providers/property_provider.dart';
 import 'features/reservations/presentation/providers/reservation_provider.dart';
@@ -30,7 +29,6 @@ import 'features/reports/domain/usecases/get_sales_reports.dart';
 import 'features/reports/domain/usecases/get_sales_report_by_id.dart';
 import 'features/reports/data/repositories/sales_report_repository_impl.dart';
 import 'features/reports/data/datasources/sales_report_remote_datasource.dart';
-// ✅ YENİ USER PROVIDER IMPORT'U
 import 'features/users/presentation/providers/user_provider.dart';
 
 // Firebase Background Message Handler
@@ -49,6 +47,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   print('🚀 RealtyFlow uygulaması başlatılıyor...');
+
   // Firebase başlat
   try {
     await Firebase.initializeApp(
@@ -59,7 +58,8 @@ void main() async {
     // Background message handler'ı kaydet
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     print('✅ Firebase Messaging background handler kaydedildi');
-    // ✅ YENİ: Bildirim servisini başlat
+
+    // Bildirim servisini başlat
     await NotificationService.initialize();
     print('✅ Notification Service başlatıldı');
   } catch (e) {
@@ -81,6 +81,7 @@ void main() async {
   // Dio instance oluştur
   final dio = Dio();
   print('✅ Dio başlatıldı');
+
   // API Client başlat
   final apiClient = ApiClient(
     dio: dio,
@@ -93,17 +94,22 @@ void main() async {
   final networkInfo = NetworkInfoImpl(Connectivity());
   print('✅ Network Info başlatıldı');
 
-  // Sales Report Dependencies
+  // ==========================================
+  // 🔥 Sales Report Dependencies
+  // ==========================================
   final salesReportRemoteDataSource = SalesReportRemoteDataSourceImpl(
     apiClient: apiClient,
   );
+
   final salesReportRepository = SalesReportRepositoryImpl(
     remoteDataSource: salesReportRemoteDataSource,
     networkInfo: networkInfo,
   );
 
+  // ✅ Use Cases (Sadece backend'den veri çekmek için)
   final getSalesReportsUseCase = GetSalesReports(salesReportRepository);
   final getSalesReportByIdUseCase = GetSalesReportById(salesReportRepository);
+
   print('✅ Sales Report UseCases başlatıldı');
 
   // Uygulamayı başlat
@@ -125,7 +131,7 @@ void main() async {
           },
         ),
 
-        // ✅ YENİ: User Provider
+        // User Provider
         ChangeNotifierProvider(
           create: (context) {
             print('👨‍💼 UserProvider oluşturuluyor...');
@@ -155,7 +161,7 @@ void main() async {
           },
         ),
 
-        // ✅ YENİ: Note Provider
+        // Note Provider
         ChangeNotifierProvider(
           create: (context) {
             print('📝 NoteProvider oluşturuluyor...');
@@ -217,7 +223,7 @@ void main() async {
           },
         ),
 
-        // Sales Report Provider
+        // Sales Report Provider (✅ Export artık Flutter'da yapılıyor)
         ChangeNotifierProvider(
           create: (context) {
             print('📊 SalesReportProvider oluşturuluyor...');
@@ -225,6 +231,8 @@ void main() async {
               repository: salesReportRepository,
               getSalesReportsUseCase: getSalesReportsUseCase,
               getSalesReportByIdUseCase: getSalesReportByIdUseCase,
+              // ✅ exportSalesReportUseCase KALDIRILDI
+              // Export işlemi artık Flutter tarafında yapılıyor (PdfExportService, ExcelExportService, CsvExportService)
             );
           },
         ),
@@ -232,5 +240,6 @@ void main() async {
       child: const RealtyFlowApp(),
     ),
   );
+
   print('✅ RealtyFlow uygulaması başlatıldı');
 }

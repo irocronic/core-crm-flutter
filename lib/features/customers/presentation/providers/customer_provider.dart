@@ -1,6 +1,6 @@
 // lib/features/customers/presentation/providers/customer_provider.dart
 import 'package:flutter/material.dart';
-import 'dart:collection'; // ✅ IMPORT MEVCUT
+import 'dart:collection';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/models/pagination_model.dart';
@@ -8,7 +8,6 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/customer_model.dart';
 import '../../data/services/customer_service.dart';
 import '../../data/models/customer_stats_model.dart';
-// 🔥 YENİ IMPORT
 import '../../data/models/timeline_event_model.dart';
 
 enum CustomerListType { all, hotLeads }
@@ -18,6 +17,9 @@ class CustomerProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
   late final CustomerService _customerService;
 
+  // 🔥 GÜNCELLEME: Max cached items limiti
+  static const int MAX_CACHED_ITEMS = 500;
+
   CustomerProvider(this._apiClient, this._authProvider) {
     _customerService = CustomerService(_apiClient);
   }
@@ -25,7 +27,6 @@ class CustomerProvider extends ChangeNotifier {
   // State
   List<CustomerModel> _customers = [];
   CustomerModel? _selectedCustomer;
-  // 🔥 YENİ STATE'LER
   List<TimelineEventModel> _timeline = [];
   bool _isTimelineLoading = false;
 
@@ -47,7 +48,6 @@ class CustomerProvider extends ChangeNotifier {
   // Getters
   List<CustomerModel> get customers => _customers;
   CustomerModel? get selectedCustomer => _selectedCustomer;
-  // 🔥 YENİ GETTER'LAR
   List<TimelineEventModel> get timeline => _timeline;
   bool get isTimelineLoading => _isTimelineLoading;
 
@@ -63,7 +63,6 @@ class CustomerProvider extends ChangeNotifier {
   CustomerStatsModel? get stats => _stats;
   bool get isStatsLoading => _isStatsLoading;
 
-  // 🔥 YENİ METOT
   Future<void> loadCustomerTimeline(int customerId) async {
     _isTimelineLoading = true;
     _errorMessage = null;
@@ -109,7 +108,7 @@ class CustomerProvider extends ChangeNotifier {
     try {
       _stats = await _customerService.getCustomerStatistics();
     } catch (e) {
-      print("CRM istatistikleri yüklenemedi: $e");
+      debugPrint("CRM istatistikleri yüklenemedi: $e");
       _stats = null;
     } finally {
       _isStatsLoading = false;
@@ -117,6 +116,7 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
+  // 🔥 GÜNCELLEME: Memory management eklenmiş pagination
   Future<void> loadCustomers({bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
@@ -133,6 +133,7 @@ class CustomerProvider extends ChangeNotifier {
     }
     _errorMessage = null;
     notifyListeners();
+
     try {
       late final PaginationModel<CustomerModel> result;
       if (_listType == CustomerListType.hotLeads) {
@@ -147,18 +148,30 @@ class CustomerProvider extends ChangeNotifier {
         );
       }
 
-      print('📥 API Response (page $_currentPage): ${result.results.length} customers');
+      debugPrint('📥 API Response (page $_currentPage): ${result.results.length} customers');
+
       if (_currentPage == 1) {
         _customers = result.results;
       } else {
         _customers.addAll(result.results);
+
+        // 🔥 BELLEK OPTİMİZASYONU: Maksimum limit kontrolü
+        if (_customers.length > MAX_CACHED_ITEMS) {
+          debugPrint('⚠️ [MEMORY OPTIMIZATION] Customer list exceeded $MAX_CACHED_ITEMS items, trimming...');
+
+          // En eski öğeleri sil (baştan kırp)
+          final itemsToRemove = _customers.length - MAX_CACHED_ITEMS;
+          _customers = _customers.sublist(itemsToRemove);
+
+          debugPrint('✅ [MEMORY OPTIMIZATION] Trimmed $itemsToRemove items, current size: ${_customers.length}');
+        }
       }
 
       _hasMore = result.next != null;
       _currentPage++;
     } catch (e, stackTrace) {
-      print('❌ Customer load error: $e');
-      print('📍 Stack trace: $stackTrace');
+      debugPrint('❌ Customer load error: $e');
+      debugPrint('📍 Stack trace: $stackTrace');
       _errorMessage = e.toString();
     } finally {
       _isLoading = false;
@@ -315,6 +328,17 @@ class CustomerProvider extends ChangeNotifier {
 
   void clearSelectedCustomer() {
     _selectedCustomer = null;
+    notifyListeners();
+  }
+
+  // 🔥 YENİ: Bellek temizleme metodu
+  void clearCache() {
+    _customers.clear();
+    _currentPage = 1;
+    _hasMore = true;
+    _selectedCustomer = null;
+    _timeline.clear();
+    debugPrint('🗑️ [CACHE CLEARED] Customer cache temizlendi');
     notifyListeners();
   }
 }

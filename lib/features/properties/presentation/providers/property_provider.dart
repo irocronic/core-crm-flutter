@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart'; // ✅ EKLENDI: DioException için
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/property_model.dart';
 import '../../data/services/property_service.dart';
@@ -16,7 +18,6 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:universal_html/html.dart' as html;
-// SelectedImage modeli (data katmanındaki tek kaynak)
 import '../../data/models/selected_image.dart';
 
 class PropertyProvider extends ChangeNotifier {
@@ -72,6 +73,7 @@ class PropertyProvider extends ChangeNotifier {
     debugPrint('[PropertyProvider] $message');
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> createProject(Map<String, dynamic> data, XFile? projectImage,
       XFile? sitePlanImage) async {
     _isLoading = true;
@@ -86,15 +88,41 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      _log('❌ Proje oluşturma hatası: $_errorMessage');
+    } on ApiException catch (e) {
+      // ✅ Backend'den gelen hata mesajı
+      _errorMessage = e.message;
+      _log('❌ Proje oluşturma hatası (API): ${e.statusCode} - $_errorMessage');
+      if (e.errors != null) {
+        _log('📋 Detaylı hatalar: ${e.errors}');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      // ✅ Ağ bağlantı hataları
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _errorMessage = 'Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok. Lütfen bağlantınızı kontrol edin.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log('❌ Proje oluşturma hatası (Ağ): ${e.type} - $_errorMessage');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      // ✅ Beklenmeyen hatalar
+      _errorMessage = 'Beklenmedik bir hata oluştu. Lütfen tekrar deneyin.';
+      _log('❌ Proje oluşturma hatası (Beklenmeyen): $e');
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> downloadSampleCsv() async {
     _isLoading = true;
     _errorMessage = null;
@@ -143,9 +171,24 @@ class PropertyProvider extends ChangeNotifier {
         }
       }
       return true;
-    } catch (e) {
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log('❌ Örnek CSV indirme hatası (API): ${e.statusCode} - $_errorMessage');
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _errorMessage = 'Bağlantı zaman aşımına uğradı.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log('❌ Örnek CSV indirme hatası (Ağ): ${e.type} - $_errorMessage');
+      return false;
+    } catch (e, stackTrace) {
       _errorMessage = 'Örnek şablon indirilemedi: ${e.toString()}';
-      _log('❌ Örnek CSV indirme hatası: $_errorMessage');
+      _log('❌ Beklenmedik hata: $_errorMessage');
+      _log('📍 Stack Trace: $stackTrace');
       return false;
     } finally {
       _isLoading = false;
@@ -153,6 +196,7 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> uploadBulkPropertiesCsv(PlatformFile file) async {
     _isLoading = true;
     _errorMessage = null;
@@ -163,9 +207,27 @@ class PropertyProvider extends ChangeNotifier {
       _log('✅ Toplu mülk CSV başarıyla yüklendi. Liste yenileniyor...');
       await loadProperties(refresh: true);
       return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      _log('❌ Toplu mülk CSV yükleme hatası: $_errorMessage');
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log('❌ Toplu mülk CSV yükleme hatası (API): ${e.statusCode} - $_errorMessage');
+      if (e.errors != null && e.errors!.containsKey('details')) {
+        _log('📋 CSV Satır Hataları: ${e.errors!['details']}');
+      }
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _errorMessage = 'Yükleme zaman aşımına uğradı. Dosya çok büyük olabilir.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı kesildi.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log('❌ Toplu mülk CSV yükleme hatası (Ağ): ${e.type} - $_errorMessage');
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Dosya yüklenemedi: ${e.toString()}';
+      _log('❌ Beklenmedik hata: $_errorMessage');
+      _log('📍 Stack Trace: $stackTrace');
       return false;
     } finally {
       _isLoading = false;
@@ -173,6 +235,7 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> bulkCreateProperties(
       List<Map<String, dynamic>> properties) async {
     _isLoading = true;
@@ -186,15 +249,38 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _log('❌ Toplu mülk oluşturma hatası: $_errorMessage');
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log('❌ Toplu mülk oluşturma hatası (API): ${e.statusCode} - $_errorMessage');
+      if (e.errors != null) {
+        _log('📋 Validation Hataları: ${e.errors}');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _errorMessage = 'İşlem zaman aşımına uğradı. Lütfen daha az mülk ekleyerek tekrar deneyin.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı kesildi.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log('❌ Toplu mülk oluşturma hatası (Ağ): ${e.type} - $_errorMessage');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Mülkler oluşturulamadı: ${e.toString()}';
+      _log('❌ Beklenmedik hata: $_errorMessage');
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<void> loadStatistics() async {
     _isStatsLoading = true;
     _errorMessage = null;
@@ -204,9 +290,22 @@ class PropertyProvider extends ChangeNotifier {
       final statsData = await _propertyService.getPropertyStatistics();
       _statistics = PropertyStatisticsModel.fromJson(statsData);
       _log('✅ İstatistikler başarıyla yüklendi.');
-    } catch (e) {
-      _errorMessage = 'İstatistikler yüklenemedi: $e';
-      _log('❌ İstatistik yükleme hatası: $_errorMessage');
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log('❌ İstatistik yükleme hatası (API): ${e.statusCode} - $_errorMessage');
+      _statistics = null;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log('❌ İstatistik yükleme hatası (Ağ): ${e.type} - $_errorMessage');
+      _statistics = null;
+    } catch (e, stackTrace) {
+      _errorMessage = 'İstatistikler yüklenemedi';
+      _log('❌ Beklenmedik hata: $_errorMessage');
+      _log('📍 Stack Trace: $stackTrace');
       _statistics = null;
     } finally {
       _isStatsLoading = false;
@@ -227,17 +326,24 @@ class PropertyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<void> loadProjects() async {
     _log('🏗️ Projeler yükleniyor...');
     try {
       _projects = await _propertyService.getProjects();
       _log('✅ ${_projects.length} proje yüklendi.');
-    } catch (e) {
-      _log("❌ Proje listesi yüklenemedi: $e");
+    } on ApiException catch (e) {
+      _log("❌ Proje listesi yüklenemedi (API): ${e.statusCode} - ${e.message}");
+    } on DioException catch (e) {
+      _log("❌ Proje listesi yüklenemedi (Ağ): ${e.type} - ${e.message}");
+    } catch (e, stackTrace) {
+      _log("❌ Beklenmedik proje listesi hatası: $e");
+      _log('📍 Stack Trace: $stackTrace');
     }
     notifyListeners();
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<void> loadProperties({bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
@@ -298,9 +404,24 @@ class PropertyProvider extends ChangeNotifier {
         _currentPage++;
       }
       _log('✅ ${_properties.length} mülk yüklendi (toplam). Daha fazla var mı: $_hasMore');
-    } catch (e) {
-      _errorMessage = e.toString();
-      _log('❌ Mülk yükleme hatası: $_errorMessage');
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log('❌ Mülk yükleme hatası (API): ${e.statusCode} - $_errorMessage');
+      if (refresh) _properties = [];
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        _errorMessage = 'Bağlantı zaman aşımına uğradı.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log('❌ Mülk yükleme hatası (Ağ): ${e.type} - $_errorMessage');
+      if (refresh) _properties = [];
+    } catch (e, stackTrace) {
+      _errorMessage = 'Mülkler yüklenemedi';
+      _log('❌ Beklenmedik mülk yükleme hatası: $_errorMessage');
+      _log('📍 Stack Trace: $stackTrace');
       if (refresh) _properties = [];
     } finally {
       _isLoading = false;
@@ -309,6 +430,7 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<void> loadAvailableProperties({bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
@@ -345,9 +467,20 @@ class PropertyProvider extends ChangeNotifier {
         _currentPage++;
       }
       _log('✅ ${_properties.length} müsait mülk yüklendi. Daha fazla var mı: $_hasMore');
-    } catch (e) {
-      _errorMessage = e.toString();
-      _log('❌ Müsait mülk yükleme hatası: $_errorMessage');
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log('❌ Müsait mülk yükleme hatası (API): ${e.statusCode} - $_errorMessage');
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log('❌ Müsait mülk yükleme hatası (Ağ): ${e.type} - $_errorMessage');
+    } catch (e, stackTrace) {
+      _errorMessage = 'Müsait mülkler yüklenemedi';
+      _log('❌ Beklenmedik müsait mülk yükleme hatası: $_errorMessage');
+      _log('📍 Stack Trace: $stackTrace');
     } finally {
       _isLoading = false;
       _isLoadingMore = false;
@@ -438,6 +571,7 @@ class PropertyProvider extends ChangeNotifier {
     loadProperties(refresh: true);
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<void> loadPropertyDetail(int id) async {
     _selectedProperty = null;
     _isLoading = true;
@@ -447,15 +581,27 @@ class PropertyProvider extends ChangeNotifier {
     try {
       _selectedProperty = await _propertyService.getPropertyDetail(id);
       _log("✅ Mülk detayı başarıyla yüklendi: ID $id");
-    } catch (e) {
-      _errorMessage = e.toString();
-      _log("❌ Mülk detayı yükleme hatası: ID $id - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Mülk detayı yükleme hatası (API): ID $id - ${e.statusCode} - $_errorMessage");
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Mülk detayı yükleme hatası (Ağ): ID $id - ${e.type} - $_errorMessage");
+    } catch (e, stackTrace) {
+      _errorMessage = 'Mülk detayı yüklenemedi';
+      _log("❌ Beklenmedik mülk detayı hatası: ID $id - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> createProperty(Map<String, dynamic> data) async {
     _isLoading = true;
     _errorMessage = null;
@@ -468,15 +614,36 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _log("❌ Yeni mülk oluşturma hatası: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Yeni mülk oluşturma hatası (API): ${e.statusCode} - $_errorMessage");
+      if (e.errors != null) {
+        _log('📋 Validation Hataları: ${e.errors}');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Yeni mülk oluşturma hatası (Ağ): ${e.type} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Mülk oluşturulamadı';
+      _log("❌ Beklenmedik mülk oluşturma hatası: $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> updateProperty(int id, Map<String, dynamic> data) async {
     _isLoading = true;
     _errorMessage = null;
@@ -495,15 +662,36 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _log("❌ Mülk güncelleme hatası: ID $id - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Mülk güncelleme hatası (API): ID $id - ${e.statusCode} - $_errorMessage");
+      if (e.errors != null) {
+        _log('📋 Validation Hataları: ${e.errors}');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Mülk güncelleme hatası (Ağ): ID $id - ${e.type} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Mülk güncellenemedi';
+      _log("❌ Beklenmedik mülk güncelleme hatası: ID $id - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> uploadImages(int propertyId, List<SelectedImage> selectedImages) async {
     _isLoading = true;
     _errorMessage = null;
@@ -516,15 +704,35 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = 'Görseller yüklenemedi: $e';
-      _log("❌ Görsel yükleme hatası: Mülk ID $propertyId - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Görsel yükleme hatası (API): Mülk ID $propertyId - ${e.statusCode} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _errorMessage = 'Yükleme zaman aşımına uğradı. Dosyalar çok büyük olabilir.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı kesildi.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Görsel yükleme hatası (Ağ): Mülk ID $propertyId - ${e.type} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Görseller yüklenemedi';
+      _log("❌ Beklenmedik görsel yükleme hatası: Mülk ID $propertyId - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> uploadDocument({
     required int propertyId,
     required String title,
@@ -551,15 +759,35 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = 'Belge yüklenemedi: $e';
-      _log("❌ Belge yükleme hatası: Mülk ID $propertyId - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Belge yükleme hatası (API): Mülk ID $propertyId - ${e.statusCode} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _errorMessage = 'Yükleme zaman aşımına uğradı. Dosya çok büyük olabilir.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı kesildi.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Belge yükleme hatası (Ağ): Mülk ID $propertyId - ${e.type} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Belge yüklenemedi';
+      _log("❌ Beklenmedik belge yükleme hatası: Mülk ID $propertyId - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> createPaymentPlan(int propertyId, Map<String, dynamic> data) async {
     _isLoading = true;
     _errorMessage = null;
@@ -572,15 +800,36 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = 'Ödeme planı oluşturulamadı: $e';
-      _log("❌ Ödeme planı oluşturma hatası: Mülk ID $propertyId - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Ödeme planı oluşturma hatası (API): Mülk ID $propertyId - ${e.statusCode} - $_errorMessage");
+      if (e.errors != null) {
+        _log('📋 Validation Hataları: ${e.errors}');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Ödeme planı oluşturma hatası (Ağ): Mülk ID $propertyId - ${e.type} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Ödeme planı oluşturulamadı';
+      _log("❌ Beklenmedik ödeme planı oluşturma hatası: Mülk ID $propertyId - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> deleteProperty(int id) async {
     _isLoading = true;
     _errorMessage = null;
@@ -593,15 +842,33 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _log("❌ Mülk silme hatası: ID $id - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Mülk silme hatası (API): ID $id - ${e.statusCode} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Mülk silme hatası (Ağ): ID $id - ${e.type} - $_errorMessage");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = 'Mülk silinemedi';
+      _log("❌ Beklenmedik mülk silme hatası: ID $id - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> deleteDocument(int propertyId, int documentId) async {
     _isLoading = true;
     notifyListeners();
@@ -611,9 +878,22 @@ class PropertyProvider extends ChangeNotifier {
       _log("✅ Belge silindi. Mülk detayı yenileniyor...");
       await loadPropertyDetail(propertyId);
       return true;
-    } catch (e) {
-      _errorMessage = "Belge silinemedi: $e";
-      _log("❌ Belge silme hatası: ID $documentId - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Belge silme hatası (API): ID $documentId - ${e.statusCode} - $_errorMessage");
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Belge silme hatası (Ağ): ID $documentId - ${e.type} - $_errorMessage");
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = "Belge silinemedi";
+      _log("❌ Beklenmedik belge silme hatası: ID $documentId - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       return false;
     } finally {
       _isLoading = false;
@@ -621,6 +901,7 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> deletePaymentPlan(int propertyId, int planId) async {
     _isLoading = true;
     notifyListeners();
@@ -630,9 +911,22 @@ class PropertyProvider extends ChangeNotifier {
       _log("✅ Ödeme planı silindi. Mülk detayı yenileniyor...");
       await loadPropertyDetail(propertyId);
       return true;
-    } catch (e) {
-      _errorMessage = "Ödeme planı silinemedi: $e";
-      _log("❌ Ödeme planı silme hatası: ID $planId - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Ödeme planı silme hatası (API): ID $planId - ${e.statusCode} - $_errorMessage");
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Ödeme planı silme hatası (Ağ): ID $planId - ${e.type} - $_errorMessage");
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = "Ödeme planı silinemedi";
+      _log("❌ Beklenmedik ödeme planı silme hatası: ID $planId - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       return false;
     } finally {
       _isLoading = false;
@@ -640,6 +934,7 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
+  // ✅ İYİLEŞTİRİLDİ: Detaylı exception handling
   Future<bool> deleteImage(int propertyId, int imageId) async {
     _isLoading = true;
     notifyListeners();
@@ -649,9 +944,22 @@ class PropertyProvider extends ChangeNotifier {
       _log("✅ Görsel silindi. Mülk detayı yenileniyor...");
       await loadPropertyDetail(propertyId);
       return true;
-    } catch (e) {
-      _errorMessage = "Görsel silinemedi: $e";
-      _log("❌ Görsel silme hatası: ID $imageId - Hata: $_errorMessage");
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _log("❌ Görsel silme hatası (API): ID $imageId - ${e.statusCode} - $_errorMessage");
+      return false;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = 'İnternet bağlantısı yok.';
+      } else {
+        _errorMessage = 'Ağ hatası: ${e.message}';
+      }
+      _log("❌ Görsel silme hatası (Ağ): ID $imageId - ${e.type} - $_errorMessage");
+      return false;
+    } catch (e, stackTrace) {
+      _errorMessage = "Görsel silinemedi";
+      _log("❌ Beklenmedik görsel silme hatası: ID $imageId - $_errorMessage");
+      _log('📍 Stack Trace: $stackTrace');
       return false;
     } finally {
       _isLoading = false;

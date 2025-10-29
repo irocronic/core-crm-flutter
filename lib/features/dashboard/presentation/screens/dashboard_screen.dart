@@ -187,6 +187,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // **** YENİ: Dinamik childAspectRatio hesaplayıcı ****
+  double _computeCardAspectRatio(double screenWidth, int crossAxisCount) {
+    // Kart başına düşen yaklaşık genişliği hesapla
+    // Padding: LayoutBuilder içinde uygulanan padding ile uyumlu olacak şekilde yaklaşık bir değer kullanıyoruz
+    const horizontalPadding = 32.0; // SingleChildScrollView padding: EdgeInsets.all(16) -> iki taraf toplam 32
+    final totalCrossSpacing = (crossAxisCount - 1) * 16.0; // crossAxisSpacing kullandığımız değer
+    final availableWidth = screenWidth - horizontalPadding - totalCrossSpacing;
+    final widthPerCard = availableWidth / crossAxisCount;
+
+    // Mobilde daha yüksek kart isteği: daha küçük aspect ratio -> daha yüksek kart
+    final double desiredHeight;
+    if (screenWidth <= 400) {
+      desiredHeight = 160.0; // çok dar ekranlar için
+    } else if (screenWidth <= 600) {
+      desiredHeight = 150.0;
+    } else if (screenWidth <= 800) {
+      desiredHeight = 140.0;
+    } else {
+      desiredHeight = 120.0; // geniş ekranlarda daha kısa kart
+    }
+
+    // childAspectRatio = width / height
+    final ratio = widthPerCard / desiredHeight;
+    // Güvenlik: çok küçük veya çok büyük değerlere sınır koy
+    return ratio.clamp(0.8, 3.0);
+  }
+  // **** HESAPLAMA SONU ****
+
   Widget _buildResponsiveCharts(BuildContext context, double width, AuthProvider authProvider) {
     final bool isWideScreen = width > 800;
     final int reservations = (authProvider.currentUser?.isSalesRep ?? false)
@@ -241,21 +269,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // için '800' olarak değiştirmek daha iyi bir responsive davranış sağlar.
     final int crmGridColumnCount = screenWidth > 800 ? 3 : 2; // **** DEĞİŞİKLİK: 600 -> 800 ****
 
-    // Diğer grid'lerin kullandığı varsayılan en-boy oranı
-    const double mainAspectRatio = 1.8;
+    // CRM grid'i için dinamik en-boy oranını compute fonksiyonuyla al
+    double crmChildAspectRatio = _computeCardAspectRatio(screenWidth, crmGridColumnCount);
 
-    // CRM grid'i için en-boy oranını hesapla
-    double crmChildAspectRatio = mainAspectRatio;
-
-    // Yüksekliklerin eşleşmesi için oranı ayarla
-    // Sadece ana grid'in sütun sayısı CRM'den fazlaysa (örn: 4'e 3) oranı ayarla
-    if (mainGridColumnCount > crmGridColumnCount && crmGridColumnCount > 0) {
-      // Yeni Oran = Ana Oran * (Ana Sütun Sayısı / CRM Sütun Sayısı)
-      // Örn: Ana=4, CRM=3 -> 1.8 * (4/3) = 2.4
-      crmChildAspectRatio = mainAspectRatio *
-          (mainGridColumnCount.toDouble() / crmGridColumnCount.toDouble());
-    }
-    // **** HESAPLAMA SONU ****
+    // Eğer isterseniz ana grid ile boyutları eşitlemek için farklı scaling uygulanabilir.
+    // (Önceki mantık korunmak istenirse burada ek hesaplama yapılabilir.)
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,7 +293,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: crmChildAspectRatio, // **** DEĞİŞİKLİK: 1.8 yerine hesaplanan değer kullanıldı ****
+          childAspectRatio: crmChildAspectRatio, // **** DEĞİŞİKLİK: Dinamik hesaplanan değer kullanıldı ****
           children: [
             StatCard(
               title: 'Toplam Müşteri',
@@ -816,6 +834,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           builder: (context, constraints) {
             final double screenWidth = constraints.maxWidth;
             final int crossAxisCount = _getCrossAxisCount(screenWidth);
+            // **** YENİ: Kart aspect ratio'u dinamik hesapla ****
+            final double dynamicCardAspectRatio = _computeCardAspectRatio(screenWidth, crossAxisCount);
 
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -874,6 +894,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
 
+                  // Taşınan: Hızlı Erişim bölümü (Hoş geldin kartından hemen sonra gösterilecek)
+                  const SizedBox(height: 24),
+                  Text(
+                    'Hızlı Erişim',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: dynamicCardAspectRatio, // **** DEĞİŞİKLİK: dinamik aspect ratio kullanıldı ****
+                    children: [
+                      _QuickActionCard(
+                        title: 'Müşteriler',
+                        icon: Icons.people,
+                        color: Colors.blue,
+                        onTap: () => context.go('/customers'),
+                      ),
+                      _QuickActionCard(
+                        title: 'Gayrimenkuller',
+                        icon: Icons.home_work,
+                        color: Colors.green,
+                        onTap: () => context.go('/properties'),
+                      ),
+                      _QuickActionCard(
+                        title: 'Randevular',
+                        icon: Icons.event,
+                        color: Colors.orange,
+                        onTap: () => context.go('/appointments'),
+                      ),
+                      if (authProvider.isAdmin || authProvider.isSalesManager)
+                        _QuickActionCard(
+                          title: 'Raporlar',
+                          icon: Icons.analytics,
+                          color: Colors.purple,
+                          onTap: () => context.go('/reports'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
                   _buildUpcomingFollowUps(activityProvider.upcomingFollowUps),
 
                   const SizedBox(height: 24),
@@ -892,7 +958,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 1.8, // **** DEĞİŞİKLİK: 1.0'dan 1.8'e değiştirildi ****
+                    childAspectRatio: dynamicCardAspectRatio, // **** DEĞİŞİKLİK: dinamik aspect ratio kullanıldı ****
                     children: [
                       StatCard(
                         title: 'Bugünkü Aktiviteler',
@@ -943,7 +1009,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
-                        childAspectRatio: 1.8, // **** DEĞİŞİKLİK: 1.0'dan 1.8'e değiştirildi ****
+                        childAspectRatio: dynamicCardAspectRatio, // **** DEĞİŞİKLİK: dinamik aspect ratio kullanıldı ****
                         children: [
                           StatCard(
                             title: 'Müşterilerim',
@@ -1001,50 +1067,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const SizedBox(height: 24),
 
-                  Text(
-                    'Hızlı Erişim',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  // Not: "Hızlı Erişim" bölümü yukarıya taşındı, alt kısımdaki tekrar eden bölüm kaldırıldı.
 
-                  const SizedBox(height: 16),
-
-                  GridView.count(
-                    crossAxisCount: crossAxisCount,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 1.8, // **** DEĞİŞİKLİK: 1.1'den 1.8'e değiştirildi ****
-                    children: [
-                      _QuickActionCard(
-                        title: 'Müşteriler',
-                        icon: Icons.people,
-                        color: Colors.blue,
-                        onTap: () => context.go('/customers'),
-                      ),
-                      _QuickActionCard(
-                        title: 'Gayrimenkuller',
-                        icon: Icons.home_work,
-                        color: Colors.green,
-                        onTap: () => context.go('/properties'),
-                      ),
-                      _QuickActionCard(
-                        title: 'Randevular',
-                        icon: Icons.event,
-                        color: Colors.orange,
-                        onTap: () => context.go('/appointments'),
-                      ),
-                      if (authProvider.isAdmin || authProvider.isSalesManager)
-                        _QuickActionCard(
-                          title: 'Raporlar',
-                          icon: Icons.analytics,
-                          color: Colors.purple,
-                          onTap: () => context.go('/reports'),
-                        ),
-                    ],
-                  ),
                 ],
               ),
             );

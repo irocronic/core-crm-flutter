@@ -14,10 +14,14 @@ abstract class SalesReportRemoteDataSource {
   Future<List<SalesReportModel>> getSalesReports(ReportFilterEntity filter);
   Future<SalesReportModel> getSalesReportById(String id);
   Future<SalesReportModel> generateReport(Map<String, dynamic> data);
+
+  /// ✅ YENİ: Export report metodu
+  Future<Map<String, dynamic>> exportReport(String reportId, String format);
 }
 
 class SalesReportRemoteDataSourceImpl implements SalesReportRemoteDataSource {
   final ApiClient apiClient;
+
   SalesReportRemoteDataSourceImpl({
     required this.apiClient,
   });
@@ -70,6 +74,7 @@ class SalesReportRemoteDataSourceImpl implements SalesReportRemoteDataSource {
       );
       debugPrint('✅ [DEBUG] Rapor oluşturma yanıtı alındı (201 Created). Ham Veri:');
       debugPrint(response.data.toString());
+
       if (response.data != null && response.data is Map<String, dynamic>) {
         if (response.data.containsKey('report')) {
           final reportData = response.data['report'];
@@ -104,36 +109,139 @@ class SalesReportRemoteDataSourceImpl implements SalesReportRemoteDataSource {
     }
   }
 
-  // 🔥 Hata mesajını güvenli şekilde çıkaran helper fonksiyon
+  /// ✅ YENİ: Export Report Implementation
+  @override
+  Future<Map<String, dynamic>> exportReport(String reportId, String format) async {
+    try {
+      debugPrint('📤 [EXPORT] Rapor dışa aktarılıyor: ID=$reportId, Format=$format');
+
+      // Format validasyonu
+      final validFormats = ['pdf', 'excel', 'csv'];
+      if (!validFormats.contains(format.toLowerCase())) {
+        throw ServerException('Geçersiz format: $format. Geçerli formatlar: ${validFormats.join(", ")}');
+      }
+
+      final response = await apiClient.get(
+        '${ApiConstants.reports}$reportId/export/',
+        queryParameters: {
+          'format': format.toLowerCase(),
+        },
+      );
+
+      debugPrint('✅ [EXPORT] Başarılı yanıt alındı');
+      debugPrint('📦 [EXPORT DATA] ${response.data}');
+
+      if (response.data == null) {
+        throw ServerException('Export yanıtı boş');
+      }
+
+      // Yanıt formatına göre işle
+      if (response.data is Map<String, dynamic>) {
+        final exportData = response.data as Map<String, dynamic>;
+
+        // Beklenen alanları kontrol et
+        if (exportData.containsKey('file_url')) {
+          debugPrint('📁 [EXPORT] Dosya URL\'i alındı: ${exportData['file_url']}');
+          return {
+            'success': true,
+            'file_url': exportData['file_url'],
+            'file_name': exportData['file_name'] ?? 'report_$reportId.$format',
+            'format': format,
+            'report_id': reportId,
+          };
+        } else if (exportData.containsKey('file_data')) {
+          debugPrint('📁 [EXPORT] Base64 veri alındı');
+          return {
+            'success': true,
+            'file_data': exportData['file_data'],
+            'file_name': exportData['file_name'] ?? 'report_$reportId.$format',
+            'format': format,
+            'report_id': reportId,
+            'mime_type': exportData['mime_type'] ?? _getMimeType(format),
+          };
+        } else {
+          throw ServerException('Export yanıtı beklenen alanları içermiyor (file_url veya file_data)');
+        }
+      } else if (response.data is String) {
+        // String yanıt (base64 encoded data olabilir)
+        debugPrint('📁 [EXPORT] String veri alındı');
+        return {
+          'success': true,
+          'file_data': response.data,
+          'file_name': 'report_$reportId.$format',
+          'format': format,
+          'report_id': reportId,
+          'mime_type': _getMimeType(format),
+        };
+      } else {
+        throw ServerException('Export yanıtı beklenmeyen formatta: ${response.data.runtimeType}');
+      }
+
+    } on DioException catch (e) {
+      debugPrint('❌ [EXPORT ERROR] DioException: ${e.message}');
+      debugPrint('📦 [EXPORT ERROR DATA] ${e.response?.data}');
+
+      // 404 - Rapor bulunamadı
+      if (e.response?.statusCode == 404) {
+        throw ServerException('Rapor bulunamadı: ID $reportId', 404);
+      }
+
+      // 400 - Geçersiz format
+      if (e.response?.statusCode == 400) {
+        throw ServerException(
+          'Geçersiz export isteği: ${_extractErrorMessage(e)}',
+          400,
+        );
+      }
+
+      throw ServerException(
+        'Rapor dışa aktarılamadı: ${_extractErrorMessage(e)}',
+        e.response?.statusCode,
+      );
+    } catch (e) {
+      debugPrint('❌ [EXPORT ERROR] Genel Hata: $e');
+      throw ServerException('Rapor dışa aktarılamadı: ${e.toString()}');
+    }
+  }
+
+  /// ✅ YENİ: Format için MIME type döndür
+  String _getMimeType(String format) {
+    switch (format.toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'excel':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'csv':
+        return 'text/csv';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  /// Hata mesajını güvenli şekilde çıkaran helper fonksiyon
   String _extractErrorMessage(DioException e) {
     try {
-      // Response data null ise
       if (e.response?.data == null) {
         return e.message ?? 'Bilinmeyen hata';
       }
 
       final data = e.response!.data;
 
-      // String ise (HTML error sayfası olabilir)
       if (data is String) {
-        // JSON parse dene
         try {
           final jsonData = json.decode(data);
           if (jsonData is Map<String, dynamic>) {
             return jsonData['detail'] ?? jsonData['error'] ?? data;
           }
         } catch (_) {
-          // JSON değilse raw string döndür
           return data.length > 100 ? '${data.substring(0, 100)}...' : data;
         }
       }
 
-      // Map ise
       if (data is Map<String, dynamic>) {
         return data['detail'] ?? data['error'] ?? data['message'] ?? 'Bilinmeyen hata';
       }
 
-      // List ise
       if (data is List) {
         return data.isNotEmpty ? data.first.toString() : 'Bilinmeyen hata';
       }

@@ -49,69 +49,77 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // İlk açılışta TELEFON seçili, alt tür kontrolü gerekmez
+  }
+
+  @override
   void dispose() {
     _notesController.dispose();
     super.dispose();
   }
 
-  // Alt türü kontrol eden ve ayarlayan fonksiyon
+  // 🔥 GÜNCELLEME: Tam widget lifecycle yönetimi
   Future<void> _checkAndSetSubType(String activityType) async {
     // Sadece 'Yüz Yüze Görüşme' seçiliyse kontrol et
     if (activityType != 'GORUSME') {
       if (mounted) {
         setState(() {
-          _subTypeDisplay = null; // Diğer türlerde temizle
+          _subTypeDisplay = null;
           _isCheckingSubType = false;
         });
       }
       return;
     }
 
-    if (mounted) {
-      setState(() {
-        _isCheckingSubType = true; // Yükleniyor durumunu başlat
-        _subTypeDisplay = null; // Önceki sonucu temizle
-      });
-    }
+    // Widget dispose olmamışsa devam et
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingSubType = true;
+      _subTypeDisplay = null;
+    });
 
     try {
-      // Burada doğrudan ApiClient okumak yerine ActivityProvider üzerinden
-      // provider'ın checkMeetingSubType metodunu çağırıyoruz. Bu yöntem,
-      // dialog'un bulunduğu context'te ApiClient sağlayıcısı yoksa oluşan
-      // ProviderNotFound hatasını engeller (çünkü ActivityProvider, tipik
-      // uygulamada ApiClient'a sahip olacak şekilde ana provider ağacında sağlanır).
       final activityProvider = context.read<ActivityProvider>();
 
-      // Provider içindeki metot, kendi state'ini yönetir (isCheckingSubType vs.)
+      // Async işlem başlat
       await activityProvider.checkMeetingSubType(widget.customerId);
 
+      // Widget hala mount edilmiş mi kontrol et
       if (!mounted) return;
 
-      // Provider'dan sonucu al ve local UI state'e kopyala
+      // Provider'dan sonucu al
       final providerResult = activityProvider.meetingSubTypeResult;
+
       setState(() {
         _subTypeDisplay = providerResult ?? 'Kontrol Edilemedi';
       });
     } catch (e, stackTrace) {
-      // Herhangi bir hata olması durumunda lokal hata durumu göster
-      // (provider içinde de loglama olabilir)
       debugPrint('❌ Alt tür kontrolünde genel hata (Dialog): $e');
       debugPrint('📄 Stack Trace: $stackTrace');
-      if (mounted) {
-        setState(() {
-          _subTypeDisplay = 'Kontrol Edilemedi';
-        });
-      }
+
+      // Widget hala mount edilmiş mi kontrol et
+      if (!mounted) return;
+
+      setState(() {
+        _subTypeDisplay = 'Kontrol Edilemedi';
+      });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingSubType = false; // Yükleniyor durumunu bitir
-        });
-      }
+      // Widget hala mount edilmiş mi kontrol et
+      if (!mounted) return;
+
+      setState(() {
+        _isCheckingSubType = false;
+      });
     }
   }
 
   Future<void> _selectFollowUpDate() async {
+    // Widget mount kontrolü
+    if (!mounted) return;
+
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -121,28 +129,36 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
       locale: const Locale('tr', 'TR'),
     );
 
-    if (picked != null && mounted) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_nextFollowUpDate ?? now.add(const Duration(hours: 1))),
-      );
+    // Widget hala mount edilmiş mi kontrol et
+    if (!mounted || picked == null) return;
 
-      if (time != null && mounted) {
-        setState(() {
-          _nextFollowUpDate = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            time.hour,
-            time.minute,
-          );
-        });
-      }
-    }
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+        _nextFollowUpDate ?? now.add(const Duration(hours: 1)),
+      ),
+    );
+
+    // Widget hala mount edilmiş mi kontrol et
+    if (!mounted || time == null) return;
+
+    setState(() {
+      _nextFollowUpDate = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        time.hour,
+        time.minute,
+      );
+    });
   }
 
   Future<void> _handleSubmit() async {
+    // Form validasyonu
     if (!_formKey.currentState!.validate()) return;
+
+    // Widget mount kontrolü
+    if (!mounted) return;
 
     final data = <String, dynamic>{
       'customer': widget.customerId,
@@ -159,6 +175,7 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
 
     final success = await provider.createActivity(data);
 
+    // Widget hala mount edilmiş mi kontrol et
     if (!mounted) return;
 
     if (success) {
@@ -269,6 +286,7 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                           setState(() {
                             _selectedActivityType = type['value'];
                           });
+                          // Async işlem başlat
                           _checkAndSetSubType(_selectedActivityType);
                         }
                       },

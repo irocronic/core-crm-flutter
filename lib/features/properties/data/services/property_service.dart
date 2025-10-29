@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import '../models/selected_image.dart';
 import '../../../../config/constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../shared/models/pagination_model.dart';
 import '../models/property_model.dart';
 import '../models/payment_plan_model.dart';
@@ -71,29 +72,14 @@ class PropertyService {
       _log('✅ Proje başarıyla oluşturuldu (Yanıt Kodu: ${response.statusCode})');
       return ProjectModel.fromJson(response.data);
     } on DioException catch (e) {
-      _log('❌ Proje oluşturma hatası: ${e.response?.statusCode}');
-      _log('📦 Error Response: ${e.response?.data}');
-      String errorMessage = 'Proje oluşturulamadı.';
-      if (e.response?.data is Map) {
-        final errors = e.response!.data as Map<String, dynamic>;
-        if (errors.isNotEmpty) {
-          final firstErrorKey = errors.keys.first;
-          final firstErrorValue = errors[firstErrorKey];
-          if (firstErrorValue is List && firstErrorValue.isNotEmpty) {
-            errorMessage = '${firstErrorKey}: ${firstErrorValue.first}';
-          } else {
-            errorMessage = '${firstErrorKey}: ${firstErrorValue.toString()}';
-          }
-        }
-      } else if (e.response?.data is String) {
-        errorMessage = e.response!.data;
-      } else if (e.message != null) {
-        errorMessage = e.message!;
-      }
-      throw Exception(errorMessage);
+      _log('❌ Proje oluşturma hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e); // ✅ DÜZELTİLDİ
     } catch (e) {
       _log('❌ Beklenmedik Proje oluşturma hatası: $e');
-      throw Exception('Beklenmedik bir hata oluştu: ${e.toString()}');
+      throw ApiException(
+        message: 'Beklenmedik bir hata oluştu: ${e.toString()}',
+        statusCode: 0,
+      );
     }
   }
 
@@ -109,9 +95,8 @@ class PropertyService {
       _log('✅ Örnek CSV şablonu başarıyla alındı (Yanıt Kodu: ${response.statusCode}).');
       return response;
     } on DioException catch (e) {
-      _log('❌ Örnek CSV indirme hatası: ${e.response?.statusCode}');
-      _log('📦 Error: ${e.response?.data}');
-      throw Exception('Örnek şablon indirilemedi: ${e.message}');
+      _log('❌ Örnek CSV indirme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e); // ✅ DÜZELTİLDİ
     }
   }
 
@@ -142,38 +127,43 @@ class PropertyService {
       _log('✅ Toplu mülk CSV dosyası başarıyla yüklendi ve işlendi (Yanıt Kodu: ${response.statusCode}).');
       return response;
     } on DioException catch (e) {
-      _log('❌ Toplu mülk CSV yükleme hatası: ${e.response?.statusCode}');
-      _log('📦 Error Response: ${e.response?.data}');
-      String errorMessage = 'Toplu mülk yüklenemedi.';
-      if (e.response?.data is Map) {
-        final errors = e.response!.data as Map<String, dynamic>;
-        if (errors.containsKey('error')) {
-          errorMessage = errors['error'].toString();
-          if (errors.containsKey('details') && errors['details'] is List) {
-            errorMessage += '\nDetaylar:\n';
-            final details = (errors['details'] as List).take(3).map((d) {
-              if (d is Map) {
-                return "Satır ${d['line']}: ${d['errors']}";
-              }
-              return d.toString();
-            }).join('\n');
-            errorMessage += details;
-            if ((errors['details'] as List).length > 3) {
-              errorMessage += "\n...";
+      _log('❌ Toplu mülk CSV yükleme hatası: ${e.response?.statusCode} - ${e.message}');
+
+      // Detaylı hata mesajını kullanıcıya göster
+      final apiException = ApiException.fromDioException(e);
+      if (apiException.errors != null && apiException.errors!.containsKey('details')) {
+        final details = apiException.errors!['details'] as List?;
+        if (details != null && details.isNotEmpty) {
+          final StringBuffer errorBuffer = StringBuffer(apiException.message);
+          errorBuffer.write('\n\nDetaylar:\n');
+
+          final displayDetails = details.take(3).map((d) {
+            if (d is Map) {
+              return "Satır ${d['line']}: ${d['errors']}";
             }
+            return d.toString();
+          }).join('\n');
+
+          errorBuffer.write(displayDetails);
+          if (details.length > 3) {
+            errorBuffer.write('\n...(${details.length - 3} hata daha)');
           }
-        } else {
-          errorMessage = errors.toString();
+
+          throw ApiException(
+            message: errorBuffer.toString(),
+            statusCode: apiException.statusCode,
+            errors: apiException.errors,
+          );
         }
-      } else if (e.response?.data is String) {
-        errorMessage = e.response!.data;
-      } else if (e.message != null) {
-        errorMessage = e.message!;
       }
-      throw Exception(errorMessage);
+
+      throw apiException;
     } catch (e) {
       _log('❌ Beklenmedik Toplu mülk CSV yükleme hatası: $e');
-      throw Exception('Beklenmedik bir hata oluştu: ${e.toString()}');
+      throw ApiException(
+        message: 'Beklenmedik bir hata oluştu: ${e.toString()}',
+        statusCode: 0,
+      );
     }
   }
 
@@ -195,14 +185,20 @@ class PropertyService {
             .toList();
       } else {
         _log('❌ Proje listesi yanıtı beklenmeyen formatta: ${response.data.runtimeType}');
-        throw Exception('Projeler yüklenemedi: Geçersiz yanıt formatı');
+        throw ApiException(
+          message: 'Projeler yüklenemedi: Geçersiz yanıt formatı',
+          statusCode: 0,
+        );
       }
     } on DioException catch (e) {
-      _log('❌ Proje listesi hatası: ${e.response?.statusCode}');
-      throw Exception('Projeler yüklenemedi: ${e.message}');
+      _log('❌ Proje listesi hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     } catch (e) {
       _log('❌ Proje listesi işleme hatası: $e');
-      throw Exception('Projeler işlenirken bir hata oluştu: ${e.toString()}');
+      throw ApiException(
+        message: 'Projeler işlenirken bir hata oluştu: ${e.toString()}',
+        statusCode: 0,
+      );
     }
   }
 
@@ -217,10 +213,8 @@ class PropertyService {
       );
       _log('✅ Mülkler başarıyla oluşturuldu.');
     } on DioException catch (e) {
-      _log('❌ Toplu mülk oluşturma hatası: ${e.response?.statusCode}');
-      _log('📦 Error: ${e.response?.data}');
-      throw Exception(
-          'Toplu mülk oluşturulamadı: ${e.response?.data ?? e.message}');
+      _log('❌ Toplu mülk oluşturma hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -264,9 +258,8 @@ class PropertyService {
             (json) => PropertyModel.fromJson(json as Map<String, dynamic>),
       );
     } on DioException catch (e) {
-      _log('❌ Gayrimenkul listesi hatası: ${e.response?.statusCode}');
-      _log('📦 Error: ${e.response?.data}');
-      throw Exception('Gayrimenkuller yüklenemedi: ${e.message}');
+      _log('❌ Gayrimenkul listesi hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -296,9 +289,8 @@ class PropertyService {
             (json) => PropertyModel.fromJson(json as Map<String, dynamic>),
       );
     } on DioException catch (e) {
-      _log('❌ Müsait gayrimenkul hatası: ${e.response?.statusCode}');
-      _log('📦 Error: ${e.response?.data}');
-      throw Exception('Satılık gayrimenkuller yüklenemedi: ${e.message}');
+      _log('❌ Müsait gayrimenkul hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -377,9 +369,8 @@ class PropertyService {
       _log('✅ Gayrimenkul detayı alındı ve temizlendi (Yanıt Kodu: ${response.statusCode})');
       return PropertyModel.fromJson(raw);
     } on DioException catch (e) {
-      _log('❌ Gayrimenkul detay hatası: ${e.response?.statusCode}');
-      _log('📦 Error: ${e.response?.data}');
-      throw Exception('Gayrimenkul detayı yüklenemedi: ${e.message}');
+      _log('❌ Gayrimenkul detay hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     } catch (e, st) {
       _log('❌ Gayrimenkul detay parsing hatası: $e');
       _log('$st');
@@ -394,11 +385,12 @@ class PropertyService {
       _log('✅ İstatistikler alındı (Yanıt Kodu: ${response.statusCode})');
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      _log('❌ İstatistik hatası: ${e.response?.statusCode}');
-      throw Exception('İstatistikler yüklenemedi: ${e.message}');
+      _log('❌ İstatistik hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
+  // ✅ DÜZELTİLDİ: Exception'ları doğru fırlat
   Future<PropertyModel> createProperty(Map<String, dynamic> data) async {
     try {
       _log('➕ Yeni gayrimenkul oluşturma isteği gönderiliyor...');
@@ -410,13 +402,12 @@ class PropertyService {
       _log('✅ Gayrimenkul oluşturuldu (Yanıt Kodu: ${response.statusCode})');
       return PropertyModel.fromJson(response.data);
     } on DioException catch (e) {
-      _log('❌ Gayrimenkul oluşturma hatası: ${e.response?.statusCode}');
-      _log('📦 Error: ${e.response?.data}');
-      throw Exception(
-          'Gayrimenkul oluşturulamadı: ${e.response?.data ?? e.message}');
+      _log('❌ Gayrimenkul oluşturma hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e); // ✅ DÜZELTİLDİ
     }
   }
 
+  // ✅ DÜZELTİLDİ: Exception'ları doğru fırlat
   Future<PropertyModel> updateProperty(int id, Map<String, dynamic> data) async {
     try {
       _log('✏️ Gayrimenkul güncelleme isteği gönderiliyor: ID $id');
@@ -428,10 +419,8 @@ class PropertyService {
       _log('✅ Gayrimenkul güncellendi (Yanıt Kodu: ${response.statusCode})');
       return PropertyModel.fromJson(response.data);
     } on DioException catch (e) {
-      _log('❌ Gayrimenkul güncelleme hatası: ${e.response?.statusCode}');
-      _log('📦 Error: ${e.response?.data}');
-      throw Exception(
-          'Gayrimenkul güncellenemedi: ${e.response?.data ?? e.message}');
+      _log('❌ Gayrimenkul güncelleme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e); // ✅ DÜZELTİLDİ
     }
   }
 
@@ -470,17 +459,14 @@ class PropertyService {
       );
       _log('✅ Görseller başarıyla yüklendi (Yanıt Kodu: ${response.statusCode}).');
     } on DioException catch (e) {
-      _log('❌ Görsel yükleme hatası: ${e.response?.data}');
-      String detail = e.message ?? 'Bilinmeyen Dio hatası';
-      if (e.response?.data is Map && e.response!.data.containsKey('detail')) {
-        detail = e.response!.data['detail'];
-      } else if (e.response?.data is String) {
-        detail = e.response!.data;
-      }
-      throw Exception('Görsel yüklenemedi: $detail');
+      _log('❌ Görsel yükleme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     } catch (e) {
       _log('❌ Beklenmedik görsel yükleme hatası: $e');
-      throw Exception('Görsel yüklenirken beklenmedik bir hata oluştu: $e');
+      throw ApiException(
+        message: 'Görsel yüklenirken beklenmedik bir hata oluştu: $e',
+        statusCode: 0,
+      );
     }
   }
 
@@ -505,8 +491,10 @@ class PropertyService {
         await MultipartFile.fromFile(filePath, filename: fileName);
       } else {
         _log('❌ Yüklenecek dosya verisi bulunamadı.');
-        throw Exception(
-            'Yüklenecek dosya verisi (path veya bytes) bulunamadı.');
+        throw ApiException(
+          message: 'Yüklenecek dosya verisi (path veya bytes) bulunamadı.',
+          statusCode: 0,
+        );
       }
 
       FormData formData = FormData.fromMap({
@@ -522,9 +510,8 @@ class PropertyService {
       );
       _log('✅ Belge başarıyla yüklendi (Yanıt Kodu: ${response.statusCode}).');
     } on DioException catch (e) {
-      _log('❌ Belge yükleme hatası: ${e.response?.data}');
-      throw Exception(
-          'Belge yüklenemedi: ${e.response?.data['detail'] ?? e.message}');
+      _log('❌ Belge yükleme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -539,9 +526,8 @@ class PropertyService {
       _log('✅ Ödeme planı oluşturuldu (Yanıt Kodu: ${response.statusCode}).');
       return PaymentPlanModel.fromJson(response.data['payment_plan']);
     } on DioException catch (e) {
-      _log('❌ Ödeme planı oluşturma hatası: ${e.response?.data}');
-      throw Exception(
-          'Ödeme planı oluşturulamadı: ${e.response?.data['detail'] ?? e.message}');
+      _log('❌ Ödeme planı oluşturma hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -551,8 +537,8 @@ class PropertyService {
       final response = await _apiClient.delete('/properties/documents/$documentId/');
       _log('✅ Belge silindi (Yanıt Kodu: ${response.statusCode}).');
     } on DioException catch (e) {
-      _log('❌ Belge silme hatası: ${e.response?.statusCode}');
-      throw Exception('Belge silinemedi: ${e.message}');
+      _log('❌ Belge silme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -562,8 +548,8 @@ class PropertyService {
       final response = await _apiClient.delete('/properties/payment-plans/$planId/');
       _log('✅ Ödeme planı silindi (Yanıt Kodu: ${response.statusCode}).');
     } on DioException catch (e) {
-      _log('❌ Ödeme planı silme hatası: ${e.response?.statusCode}');
-      throw Exception('Ödeme planı silinemedi: ${e.message}');
+      _log('❌ Ödeme planı silme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -573,8 +559,8 @@ class PropertyService {
       final response = await _apiClient.delete('/properties/images/$imageId/');
       _log('✅ Görsel silindi (Yanıt Kodu: ${response.statusCode}).');
     } on DioException catch (e) {
-      _log('❌ Görsel silme hatası: ${e.response?.statusCode}');
-      throw Exception('Görsel silinemedi: ${e.message}');
+      _log('❌ Görsel silme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -584,8 +570,8 @@ class PropertyService {
       final response = await _apiClient.delete('${ApiConstants.properties}$id/');
       _log('✅ Gayrimenkul silindi (Yanıt Kodu: ${response.statusCode})');
     } on DioException catch (e) {
-      _log('❌ Gayrimenkul silme hatası: ${e.response?.statusCode}');
-      throw Exception('Gayrimenkul silinemedi: ${e.message}');
+      _log('❌ Gayrimenkul silme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -599,8 +585,8 @@ class PropertyService {
       _log('✅ Durum güncellendi (Yanıt Kodu: ${response.statusCode})');
       return PropertyModel.fromJson(response.data);
     } on DioException catch (e) {
-      _log('❌ Durum güncelleme hatası: ${e.response?.statusCode}');
-      throw Exception('Durum güncellenemedi: ${e.message}');
+      _log('❌ Durum güncelleme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 
@@ -614,8 +600,8 @@ class PropertyService {
       _log('✅ Fiyat güncellendi (Yanıt Kodu: ${response.statusCode})');
       return PropertyModel.fromJson(response.data);
     } on DioException catch (e) {
-      _log('❌ Fiyat güncelleme hatası: ${e.response?.statusCode}');
-      throw Exception('Fiyat güncellenemedi: ${e.message}');
+      _log('❌ Fiyat güncelleme hatası: ${e.response?.statusCode} - ${e.message}');
+      throw ApiException.fromDioException(e);
     }
   }
 }
