@@ -2,10 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- ============================================================ -->
+	<!-- 🔥 TEMEL UYGULAMA BİLGİLERİ -->
+	<!-- ============================================================ -->
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Flutter Realtyflow Crm</string>
+	<string>RealtyFlow CRM</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +16,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>flutter_realtyflow_crm</string>
+	<string>RealtyFlow</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -22,6 +25,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 EKRAN YÖNLENDİRME AYARLARI -->
+	<!-- ============================================================ -->
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -41,9 +48,201 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 PERFORMANS AYARLARI -->
+	<!-- ============================================================ -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 KAMERA İZNİ (Image Picker için) -->
+	<!-- ============================================================ -->
+	<key>NSCameraUsageDescription</key>
+	<string>Profil fotoğrafı veya mülk görseli çekmek için kamera erişimi gerekiyor</string>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 FOTOĞRAF KÜTÜPHANESİ İZİNLERİ -->
+	<!-- ============================================================ -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Profil fotoğrafı veya mülk görseli seçmek için fotoğraf kütüphanesi erişimi gerekiyor</string>
+	
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Sözleşme belgelerini ve görselleri kaydetmek için fotoğraf kütüphanesi erişimi gerekiyor</string>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 DOSYA İŞLEMLERİ İZİNLERİ -->
+	<!-- ============================================================ -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 DESTEKLENEN DOSYA TİPLERİ -->
+	<!-- ============================================================ -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<!-- DOCX Dosyaları -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Microsoft Word Document</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.openxmlformats.wordprocessingml.document</string>
+				<string>com.microsoft.word.doc</string>
+			</array>
+		</dict>
+		
+		<!-- PDF Dosyaları -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>PDF Document</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+			</array>
+		</dict>
+		
+		<!-- Excel Dosyaları -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Microsoft Excel Spreadsheet</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.openxmlformats.spreadsheetml.sheet</string>
+				<string>com.microsoft.excel.xls</string>
+			</array>
+		</dict>
+		
+		<!-- CSV Dosyaları -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>CSV Document</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.comma-separated-values-text</string>
+			</array>
+		</dict>
+		
+		<!-- Görsel Dosyaları -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Image</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.image</string>
+				<string>public.jpeg</string>
+				<string>public.png</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 EXPORTED UTI (Uniform Type Identifiers) -->
+	<!-- ============================================================ -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Office Open XML Document</string>
+			<key>UTTypeIdentifier</key>
+			<string>org.openxmlformats.wordprocessingml.document</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>docx</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/vnd.openxmlformats-officedocument.wordprocessingml.document</string>
+			</dict>
+		</dict>
+	</array>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 BACKGROUND MODES (Firebase Messaging için) -->
+	<!-- ============================================================ -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 URL SCHEMES (Deep Linking için) -->
+	<!-- ============================================================ -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.realtyflow.crm</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>realtyflow</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 APP TRANSPORT SECURITY (HTTP için) -->
+	<!-- ============================================================ -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Development için HTTP'ye izin ver -->
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<!-- Production'da sadece HTTPS kullanılmalı -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 KONUM İZİNLERİ (İleride gerekirse) -->
+	<!-- ============================================================ -->
+	<!-- 
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Yakınımdaki mülkleri görmek için konum bilgisi gerekiyor</string>
+	
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Mülk ziyaretlerini takip etmek için konum bilgisi gerekiyor</string>
+	-->
+	
+	<!-- ============================================================ -->
+	<!-- 🔥 CONTACTS İZNİ (İleride gerekirse) -->
+	<!-- ============================================================ -->
+	<!-- 
+	<key>NSContactsUsageDescription</key>
+	<string>Müşteri bilgilerini içe aktarmak için rehber erişimi gerekiyor</string>
+	-->
+	
 </dict>
 </plist>

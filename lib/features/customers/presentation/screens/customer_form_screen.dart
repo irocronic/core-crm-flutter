@@ -7,6 +7,8 @@ import '../../../../core/utils/validators.dart';
 import '../providers/customer_provider.dart';
 // EKLENEN KOD: CustomDrawer bileşenini içe aktarma
 import '../../../../shared/widgets/custom_drawer.dart';
+// **** YENİ IMPORT (Provider'dan dönen model için) ****
+import '../../data/models/customer_model.dart';
 
 class CustomerFormScreen extends StatefulWidget {
   final int? customerId;
@@ -92,6 +94,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     super.dispose();
   }
 
+  // **** DEĞİŞİKLİK BURADA (_handleSubmit) ****
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -107,24 +110,40 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     };
 
     final provider = context.read<CustomerProvider>();
-    bool success = false;
+    // ESKİ: bool success = false;
+    CustomerModel? resultCustomer; // YENİ
 
     if (isEditing) {
-      success = await provider.updateCustomer(widget.customerId!, data);
+      // ESKİ: success = await provider.updateCustomer(widget.customerId!, data);
+      resultCustomer = await provider.updateCustomer(widget.customerId!, data); // YENİ
     } else {
-      success = await provider.createCustomer(data);
+      // ESKİ: success = await provider.createCustomer(data);
+      resultCustomer = await provider.createCustomer(data); // YENİ
     }
 
     if (!mounted) return;
 
-    if (success) {
-      context.pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEditing ? 'Müşteri güncellendi' : 'Müşteri eklendi'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    // ESKİ: if (success) {
+    if (resultCustomer != null) { // YENİ: Sonuç null değilse başarılıdır
+      if (isEditing) {
+        // Düzenleme başarılı, geri dön
+        context.pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Müşteri güncellendi'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // Oluşturma başarılı, detay ekranına git
+        context.go('/customers/${resultCustomer.id}'); // **** YÖNLENDİRME BURADA ****
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Müşteri eklendi: ${resultCustomer.fullName}'), // Kullanıcıya bilgi ver
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } else {
       // ✅ GÜNCELLEME: Genel hata mesajını sadece validation hatası yoksa göster.
       // Hatalar zaten form alanlarında gösterilecek.

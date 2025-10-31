@@ -5,8 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../auth/presentation/providers/auth_provider.dart'; // ✅ YENİ IMPORT
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/contract_model.dart';
 import '../providers/contract_provider.dart';
 import '../widgets/contract_status_badge.dart';
@@ -37,9 +36,13 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sözleşmeyi İmzala'),
-        content: const Text(
+        title: Text(
+          'Sözleşmeyi İmzala',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        content: Text(
           'Bu sözleşmeyi imzalanmış olarak işaretlemek istediğinizden emin misiniz?',
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
         actions: [
           TextButton(
@@ -82,11 +85,17 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sözleşmeyi İptal Et'),
+        title: Text(
+          'Sözleşmeyi İptal Et',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('İptal nedenini belirtiniz:'),
+            Text(
+              'İptal nedenini belirtiniz:',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
@@ -178,18 +187,265 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     }
   }
 
+  // ============================================================
+  // 🔥 YENİ: DOCX EXPORT METODLARI
+  // ============================================================
+
+  /// Export seçeneklerini göster
+  Future<void> _showExportOptions() async {
+    final provider = context.read<ContractProvider>();
+
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Export Seçenekleri',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // DOCX Export & Share
+            ListTile(
+              leading: const Icon(Icons.share, color: AppColors.primary),
+              title: const Text('DOCX Olarak Paylaş'),
+              subtitle: const Text('Word dosyası olarak başkalarıyla paylaş'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _exportAndShareDocx(provider);
+              },
+            ),
+
+            const Divider(),
+
+            // DOCX Export & Open
+            ListTile(
+              leading: const Icon(Icons.open_in_new, color: AppColors.success),
+              title: const Text('DOCX Olarak Aç'),
+              subtitle: const Text('Word dosyası olarak görüntüle'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _exportAndOpenDocx(provider);
+              },
+            ),
+
+            const Divider(),
+
+            // DOCX Save to Downloads
+            ListTile(
+              leading: const Icon(Icons.download, color: AppColors.info),
+              title: const Text('DOCX İndir'),
+              subtitle: const Text('İndirilenler klasörüne kaydet'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _saveDocxToDownloads(provider);
+              },
+            ),
+
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// DOCX export ve paylaş
+  Future<void> _exportAndShareDocx(ContractProvider provider) async {
+    try {
+      // Loading dialog göster
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('DOCX oluşturuluyor...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final success = await provider.exportAndShareDocx(widget.contractId);
+
+      if (mounted) {
+        Navigator.pop(context); // Loading dialog'u kapat
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'DOCX başarıyla paylaşıldı'
+                  : provider.error ?? 'DOCX paylaşılamadı',
+            ),
+            backgroundColor: success ? AppColors.success : AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Loading dialog'u kapat
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  /// DOCX export ve aç
+  Future<void> _exportAndOpenDocx(ContractProvider provider) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('DOCX açılıyor...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final success = await provider.exportAndOpenDocx(widget.contractId);
+
+      if (mounted) {
+        Navigator.pop(context);
+
+        if (!success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                provider.error ?? 'DOCX açılamadı',
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  /// DOCX Downloads'a kaydet
+  Future<void> _saveDocxToDownloads(ContractProvider provider) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('DOCX kaydediliyor...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final filePath = await provider.saveDocxToDownloads(widget.contractId);
+
+      if (mounted) {
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              filePath != null
+                  ? 'DOCX kaydedildi: ${filePath.split('/').last}'
+                  : provider.error ?? 'DOCX kaydedilemedi',
+            ),
+            backgroundColor: filePath != null ? AppColors.success : AppColors.error,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  // ============================================================
+  // YENİ METODLAR SONU
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Sözleşme Detayı',
-          style: AppTextStyles.h2.copyWith(color: Colors.white),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         backgroundColor: AppColors.primary,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          // 🔥 YENİ: Export button
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: _showExportOptions,
+            tooltip: 'Export',
+          ),
+        ],
       ),
       body: Consumer<ContractProvider>(
         builder: (context, provider, child) {
@@ -203,7 +459,12 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
 
           final contract = provider.selectedContract;
           if (contract == null) {
-            return const Center(child: Text('Sözleşme bulunamadı'));
+            return Center(
+              child: Text(
+                'Sözleşme bulunamadı',
+                style: theme.textTheme.bodyLarge,
+              ),
+            );
           }
 
           return SingleChildScrollView(
@@ -225,7 +486,6 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
                 if (contract.notes != null && contract.notes!.isNotEmpty)
                   _buildNotesCard(contract.notes!),
                 const SizedBox(height: 16),
-                // ✅ GÜNCELLEME: `context` parametresi eklendi
                 _buildActionsCard(context, contract),
                 const SizedBox(height: 100),
               ],
@@ -237,6 +497,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildHeaderCard(ContractModel contract) {
+    final theme = Theme.of(context);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -254,13 +516,15 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
                     children: [
                       Text(
                         contract.contractNumber,
-                        style: AppTextStyles.h3,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         contract.contractType.displayName,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -276,7 +540,9 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildInfoCard(ContractModel contract) {
+    final theme = Theme.of(context);
     final dateFormat = DateFormat('dd MMM yyyy', 'tr_TR');
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -285,7 +551,12 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Genel Bilgiler', style: AppTextStyles.h3),
+            Text(
+              'Genel Bilgiler',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: 24),
             _buildInfoRow(
               'Sözleşme Tarihi',
@@ -321,6 +592,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildReservationCard(ReservationDetails reservation) {
+    final theme = Theme.of(context);
     final dateFormat = DateFormat('dd MMM yyyy', 'tr_TR');
     final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
 
@@ -332,7 +604,12 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Rezervasyon Bilgileri', style: AppTextStyles.h3),
+            Text(
+              'Rezervasyon Bilgileri',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: 24),
             _buildInfoRow('Rezervasyon No', reservation.reservationNumber),
             _buildInfoRow('Müşteri', reservation.customer.fullName),
@@ -343,7 +620,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
             ),
             _buildInfoRow(
               'Rezervasyon Tutarı',
-              currencyFormat.format(double.tryParse(reservation.reservationAmount) ?? 0),
+              currencyFormat.format(reservation.depositAmount), // ✅ depositAmount kullan
             ),
           ],
         ),
@@ -352,6 +629,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildSaleCard(SaleDetails sale) {
+    final theme = Theme.of(context);
     final dateFormat = DateFormat('dd MMM yyyy', 'tr_TR');
     final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
 
@@ -363,7 +641,12 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Satış Bilgileri', style: AppTextStyles.h3),
+            Text(
+              'Satış Bilgileri',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: 24),
             _buildInfoRow('Satış No', sale.saleNumber),
             _buildInfoRow('Müşteri', sale.customer.fullName),
@@ -374,9 +657,9 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
             ),
             _buildInfoRow(
               'Satış Fiyatı',
-              currencyFormat.format(double.tryParse(sale.salePrice) ?? 0),
+              currencyFormat.format(sale.salePrice), // ✅ Direkt double kullan
             ),
-            _buildInfoRow('Ödeme Planı', sale.paymentPlan),
+            _buildInfoRow('Ödeme Planı', sale.paymentPlan ?? '-'), // ✅ Null-safe
           ],
         ),
       ),
@@ -384,6 +667,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildPdfCard(ContractModel contract) {
+    final theme = Theme.of(context);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -392,20 +677,34 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sözleşme Belgesi', style: AppTextStyles.h3),
+            Text(
+              'Sözleşme Belgesi',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: 24),
             if (contract.contractFile != null)
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf, color: AppColors.error),
-                title: const Text('Sözleşme PDF'),
-                subtitle: const Text('Tıklayın görüntülemek için'),
+                title: Text(
+                  'Sözleşme PDF',
+                  style: theme.textTheme.bodyLarge,
+                ),
+                subtitle: Text(
+                  'Tıklayın görüntülemek için',
+                  style: theme.textTheme.bodySmall,
+                ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => _openPdf(contract.contractFile!),
               )
             else
               Column(
                 children: [
-                  const Text('Henüz PDF oluşturulmamış'),
+                  Text(
+                    'Henüz PDF oluşturulmamış',
+                    style: theme.textTheme.bodyMedium,
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: _generatePdf,
@@ -424,6 +723,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildNotesCard(String notes) {
+    final theme = Theme.of(context);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -432,11 +733,16 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Notlar', style: AppTextStyles.h3),
+            Text(
+              'Notlar',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: 24),
             Text(
               notes,
-              style: AppTextStyles.bodyMedium,
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
@@ -444,12 +750,10 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     );
   }
 
-  // ✅ GÜNCELLEME: `context` parametresi eklendi ve rol kontrolleri yapıldı
   Widget _buildActionsCard(BuildContext context, ContractModel contract) {
-    // AuthProvider'ı burada dinliyoruz.
+    final theme = Theme.of(context);
     final authProvider = context.watch<AuthProvider>();
 
-    // Django'daki yetkilere göre (IsSalesManager, IsSalesRep) buton görünürlüklerini ayarlıyoruz
     bool canSign = (authProvider.isSalesRep || authProvider.isSalesManager || authProvider.isAdmin) &&
         (contract.status == ContractStatus.draft || contract.status == ContractStatus.pendingApproval);
 
@@ -457,7 +761,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         (contract.status != ContractStatus.cancelled && contract.status != ContractStatus.signed);
 
     if (!canSign && !canCancel) {
-      return const SizedBox.shrink(); // Gösterilecek buton yoksa hiçbir şey çizme
+      return const SizedBox.shrink();
     }
 
     return Card(
@@ -468,7 +772,12 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('İşlemler', style: AppTextStyles.h3),
+            Text(
+              'İşlemler',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: 24),
             if (canSign)
               SizedBox(
@@ -504,6 +813,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildInfoRow(String label, String value) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -513,15 +824,15 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
             width: 140,
             child: Text(
               label,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: AppTextStyles.bodyMedium.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -532,6 +843,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildErrorWidget(String error) {
+    final theme = Theme.of(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -540,12 +853,17 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           children: [
             Icon(Icons.error_outline, size: 64, color: AppColors.error),
             const SizedBox(height: 16),
-            Text('Bir Hata Oluştu', style: AppTextStyles.h3),
+            Text(
+              'Bir Hata Oluştu',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               error,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
               ),
               textAlign: TextAlign.center,
             ),

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================ -->
+<!-- 🔥 FILE PROVIDER PATHS CONFIGURATION -->
+<!-- FileProvider için dosya erişim yollarını tanımlar -->
+<!-- ============================================================ -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Harici depolama kök dizini -->
+    <external-path
+        name="external_files"
+        path="." />
+    
+    <!-- Uygulama dış dosya dizini (getExternalFilesDir) -->
+    <external-files-path
+        name="external_files_path"
+        path="." />
+    
+    <!-- Uygulama cache dizini -->
+    <cache-path
+        name="cache"
+        path="." />
+    
+    <!-- Uygulama dış cache dizini -->
+    <external-cache-path
+        name="external_cache"
+        path="." />
+    
+    <!-- Uygulama internal dosya dizini (getFilesDir) -->
+    <files-path
+        name="files"
+        path="." />
+    
+    <!-- Download klasörü -->
+    <external-path
+        name="download"
+        path="Download" />
+    
+    <!-- Documents klasörü -->
+    <external-path
+        name="documents"
+        path="Documents" />
+</paths>

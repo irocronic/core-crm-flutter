@@ -1,20 +1,30 @@
 // lib/features/contracts/presentation/providers/contract_provider.dart
 
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../data/models/contract_model.dart';
 import '../../data/services/contract_service.dart';
+import '../../data/services/contract_docx_export_service.dart';
 
 /// Contract Provider - State management for contracts
 class ContractProvider with ChangeNotifier {
   final ContractService _contractService;
+  // 🔥 FIX: ApiClient'i ContractDocxExportService'e inject et
+  late final ContractDocxExportService _docxExportService;
 
-  ContractProvider(this._contractService);
+  ContractProvider(this._contractService) {
+    // 🔥 FIX: ApiClient'i service'e geçir
+    _docxExportService = ContractDocxExportService(_contractService.apiClient);
+  }
 
   // State variables
   List<ContractModel> _contracts = [];
   ContractModel? _selectedContract;
   bool _isLoading = false;
   bool _isLoadingMore = false;
+  bool _isExporting = false;
   String? _error;
   int _currentPage = 1;
   bool _hasMoreData = true;
@@ -31,6 +41,7 @@ class ContractProvider with ChangeNotifier {
   ContractModel? get selectedContract => _selectedContract;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
+  bool get isExporting => _isExporting;
   String? get error => _error;
   bool get hasMoreData => _hasMoreData;
   ContractType? get filterType => _filterType;
@@ -279,7 +290,6 @@ class ContractProvider with ChangeNotifier {
   Future<bool> generatePdf(int id) async {
     try {
       await _contractService.generatePdf(id);
-      // Reload contract to get updated file URL
       await loadContractById(id);
       return true;
     } catch (e) {
@@ -287,6 +297,121 @@ class ContractProvider with ChangeNotifier {
       debugPrint('Error generating PDF: $e');
       notifyListeners();
       return false;
+    }
+  }
+
+  // ============================================================
+  // 🔥 DOCX EXPORT METODLARI
+  // ============================================================
+
+  /// Sözleşmeyi DOCX olarak export eder
+  Future<String?> exportContractAsDocx(int contractId) async {
+    _isExporting = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      if (_selectedContract == null || _selectedContract!.id != contractId) {
+        await loadContractById(contractId);
+      }
+
+      if (_selectedContract == null) {
+        throw Exception('Sözleşme bulunamadı');
+      }
+
+      final filePath = await _docxExportService.exportContract(_selectedContract!);
+
+      debugPrint('✅ DOCX export başarılı: $filePath');
+
+      _error = null;
+      return filePath;
+    } catch (e) {
+      _error = 'DOCX export hatası: ${e.toString()}';
+      debugPrint('❌ DOCX export hatası: $e');
+      return null;
+    } finally {
+      _isExporting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sözleşmeyi DOCX olarak export eder ve paylaşır
+  Future<bool> exportAndShareDocx(int contractId) async {
+    try {
+      final filePath = await exportContractAsDocx(contractId);
+
+      if (filePath == null) {
+        return false;
+      }
+
+      final result = await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Sözleşme - ${_selectedContract?.contractNumber}',
+        text: 'Sözleşme DOCX dosyası ektedir.',
+      );
+
+      return result.status == ShareResultStatus.success;
+    } catch (e) {
+      _error = 'Paylaşım hatası: ${e.toString()}';
+      debugPrint('❌ Share error: $e');
+      return false;
+    }
+  }
+
+  /// Sözleşmeyi DOCX olarak export eder ve açar
+  Future<bool> exportAndOpenDocx(int contractId) async {
+    try {
+      final filePath = await exportContractAsDocx(contractId);
+
+      if (filePath == null) {
+        return false;
+      }
+
+      final result = await OpenFilex.open(filePath);
+
+      return result.type == ResultType.done;
+    } catch (e) {
+      _error = 'Dosya açma hatası: ${e.toString()}';
+      debugPrint('❌ Open file error: $e');
+      return false;
+    }
+  }
+
+  /// Sözleşmeyi DOCX olarak Downloads klasörüne kaydeder
+  Future<String?> saveDocxToDownloads(int contractId) async {
+    _isExporting = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      if (_selectedContract == null || _selectedContract!.id != contractId) {
+        await loadContractById(contractId);
+      }
+
+      if (_selectedContract == null) {
+        throw Exception('Sözleşme bulunamadı');
+      }
+
+      final tempPath = await _docxExportService.exportContract(_selectedContract!);
+
+      final bytes = await File(tempPath).readAsBytes();
+
+      final finalPath = await _docxExportService.saveToDownloads(
+        bytes,
+        _selectedContract!,
+      );
+
+      debugPrint('✅ DOCX Downloads klasörüne kaydedildi: $finalPath');
+
+      _error = null;
+      return finalPath;
+    } catch (e) {
+      _error = 'DOCX kaydetme hatası: ${e.toString()}';
+      debugPrint('❌ Save error: $e');
+      return null;
+    } finally {
+      _isExporting = false;
+      notifyListeners();
     }
   }
 

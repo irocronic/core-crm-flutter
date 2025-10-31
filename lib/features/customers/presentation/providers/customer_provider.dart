@@ -67,7 +67,6 @@ class CustomerProvider extends ChangeNotifier {
     _isTimelineLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
       _timeline = await _customerService.getCustomerTimeline(customerId);
     } catch (e) {
@@ -217,28 +216,33 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> createCustomer(Map<String, dynamic> data) async {
+  // **** DEĞİŞİKLİK BURADA (createCustomer) ****
+  // Dönüş tipi Future<bool> yerine Future<CustomerModel?> oldu.
+  Future<CustomerModel?> createCustomer(Map<String, dynamic> data) async {
     _isLoading = true;
     _clearErrors();
     notifyListeners();
     try {
       final newCustomer = await _customerService.createCustomer(data);
       _customers.insert(0, newCustomer);
-      return true;
+      _selectedCustomer = newCustomer; // Yeni müşteriyi seçili olarak ayarla
+      return newCustomer; // Başarı durumunda müşteriyi döndür
     } on ValidationException catch (e) {
       _validationErrors = e.errors;
       _errorMessage = e.message;
-      return false;
+      return null; // Başarısız durumda null döndür
     } catch (e) {
       _errorMessage = e.toString();
-      return false;
+      return null; // Başarısız durumda null döndür
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<bool> updateCustomer(int id, Map<String, dynamic> data) async {
+  // **** DEĞİŞİKLİK BURADA (updateCustomer) ****
+  // Dönüş tipi Future<bool> yerine Future<CustomerModel?> oldu.
+  Future<CustomerModel?> updateCustomer(int id, Map<String, dynamic> data) async {
     _isLoading = true;
     _clearErrors();
     notifyListeners();
@@ -253,14 +257,14 @@ class CustomerProvider extends ChangeNotifier {
         _selectedCustomer = updatedCustomer;
       }
 
-      return true;
+      return updatedCustomer; // Başarı durumunda müşteriyi döndür
     } on ValidationException catch (e) {
       _validationErrors = e.errors;
       _errorMessage = e.message;
-      return false;
+      return null; // Başarısız durumda null döndür
     } catch (e) {
       _errorMessage = e.toString();
-      return false;
+      return null; // Başarısız durumda null döndür
     } finally {
       _isLoading = false;
       notifyListeners();

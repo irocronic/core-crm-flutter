@@ -13,11 +13,12 @@ import '../../../properties/data/models/property_model.dart';
 // **** GÜNCELLEME BAŞLANGICI ****
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../users/presentation/providers/user_provider.dart';
+// **** YENİ IMPORT: UserModel'a ihtiyacımız olacak ****
+import '../../../auth/data/models/user_model.dart';
 // **** GÜNCELLEME SONU ****
 
 class ReservationFormScreen extends StatefulWidget {
   final PropertyModel? initialProperty;
-
   const ReservationFormScreen({
     super.key,
     this.initialProperty,
@@ -201,7 +202,10 @@ class _ReservationFormScreenState extends State<ReservationFormScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      context.go('/reservations');
+      // context.go('/reservations'); // Bir önceki commit'te bu düzeltilmişti, aynen kalıyor.
+      // Düzeltme: `context.go` yerine `context.push` veya `context.pop`
+      // Yeni rezervasyon sonrası liste yenilenmesi için `context.go` en doğrusu.
+      context.go('/reservations', extra: 'all');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -391,15 +395,31 @@ class _ReservationFormScreenState extends State<ReservationFormScreen> {
     );
   }
 
-  // **** GÜNCELLEME BAŞLANGICI ****
-  // Yeni widget
+  // **** DEĞİŞİKLİK BURADA: _buildSalesRepSelector ****
   Widget _buildSalesRepSelector() {
+    // `watch` yerine `read` kullanmak build sırasında değişikliğe tepki vermemeyi sağlar,
+    // ancak bu durumda `watch` kullanmak, provider'lar yüklendiğinde widget'ın yeniden çizilmesi için gereklidir.
     final authProvider = context.watch<AuthProvider>();
     final userProvider = context.watch<UserProvider>();
     final currentUser = authProvider.currentUser;
 
     // Sadece Admin ve Satış Müdürü bu alanı değiştirebilir
     if (authProvider.isAdmin || authProvider.isSalesManager) {
+
+      // **** HATA DÜZELTME BAŞLANGICI ****
+      // userProvider.salesReps listesi SADECE 'SATIS_TEMSILCISI' rolündekileri içerir.
+      // Eğer giriş yapan 'SATIS_MUDURU' veya 'ADMIN' ise, kendisi bu listede olmayabilir.
+      // Bu nedenle, `_selectedSalesRepId` (kendi ID'miz) `items` listesinde bulunmaz ve hata verir.
+      // ÇÖZÜM: Listeyi kopyala ve mevcut kullanıcı (Müdür/Admin) listede yoksa onu ekle.
+
+      final List<UserModel> assignableUsers = List.from(userProvider.salesReps);
+
+      if (currentUser != null && !assignableUsers.any((user) => user.id == currentUser.id)) {
+        // Kullanıcıyı listenin başına ekle
+        assignableUsers.insert(0, currentUser);
+      }
+      // **** HATA DÜZELTME SONU ****
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -411,13 +431,14 @@ class _ReservationFormScreenState extends State<ReservationFormScreen> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
-            value: _selectedSalesRepId,
+            value: _selectedSalesRepId, // Bu ID (örn: 2) artık 'assignableUsers' listesinde mevcut.
             decoration: const InputDecoration(
               labelText: 'Satış Temsilcisi',
               prefixIcon: Icon(Icons.person_pin_outlined),
               hintText: 'Temsilci seçin',
             ),
-            items: userProvider.salesReps.map((rep) {
+            // 'userProvider.salesReps' yerine 'assignableUsers' kullan
+            items: assignableUsers.map((rep) {
               return DropdownMenuItem<int>(
                 value: rep.id,
                 child: Text(rep.fullName),
@@ -446,7 +467,7 @@ class _ReservationFormScreenState extends State<ReservationFormScreen> {
       ),
     );
   }
-  // **** GÜNCELLEME SONU ****
+  // **** DEĞİŞİKLİK SONU ****
 
   Widget _buildPropertySelector() {
     return Consumer<PropertyProvider>(

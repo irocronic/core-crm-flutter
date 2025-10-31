@@ -15,9 +15,13 @@ class ApiClient {
   // Callback for unauthorized errors (401)
   Future<void> Function()? _onUnauthorizedCallback;
 
-  // ✅ FIX: Token refresh için Completer kullanarak senkronizasyon
+  // Token refresh için Completer kullanarak senkronizasyon
   bool _isRefreshing = false;
   Completer<String>? _tokenRefreshCompleter;
+
+  // Token refresh retry sayacı
+  int _refreshRetryCount = 0;
+  static const int _maxRefreshRetries = 3;
 
   ApiClient({
     required Dio dio,
@@ -66,34 +70,40 @@ class ApiClient {
           debugPrint('📦 [ERROR RESPONSE] ${error.response?.data}');
           debugPrint('🔢 [STATUS CODE] ${error.response?.statusCode}');
 
-          // 🔥 401 Unauthorized - Token Refresh Mekanizması
+          // 401 Unauthorized - Token Refresh Mekanizması
           if (error.response?.statusCode == 401) {
             debugPrint('🔐 [UNAUTHORIZED] Token süresi dolmuş, refresh deneniyor...');
 
             try {
-              // ✅ FIX: Token refresh işlemi devam ediyorsa, Completer ile bekle
+              // Token refresh işlemi devam ediyorsa, Completer ile bekle
               if (_isRefreshing) {
                 debugPrint('⏳ [TOKEN REFRESH] Zaten devam ediyor, bekleniyor...');
 
-                // Mevcut refresh işleminin tamamlanmasını bekle
-                final newToken = await _tokenRefreshCompleter!.future;
-
-                // Yeni token ile başarısız olan isteği tekrar dene
-                final requestOptions = error.requestOptions;
-                requestOptions.headers['Authorization'] = 'Bearer $newToken';
-
-                debugPrint('🔄 [RETRY] Refresh tamamlandı, istek tekrar deneniyor...');
-
                 try {
+                  // Mevcut refresh işleminin tamamlanmasını bekle
+                  final newToken = await _tokenRefreshCompleter!.future.timeout(
+                    const Duration(seconds: 10),
+                    onTimeout: () {
+                      throw TimeoutException('Token refresh timeout');
+                    },
+                  );
+
+                  // Yeni token ile başarısız olan isteği tekrar dene
+                  final requestOptions = error.requestOptions;
+                  requestOptions.headers['Authorization'] = 'Bearer $newToken';
+
+                  debugPrint('🔄 [RETRY] Refresh tamamlandı, istek tekrar deneniyor...');
+
                   final retryResponse = await _dio.fetch(requestOptions);
                   return handler.resolve(retryResponse);
-                } catch (retryError) {
-                  debugPrint('❌ [RETRY ERROR] Tekrar deneme başarısız: $retryError');
+                } catch (completerError) {
+                  debugPrint('❌ [COMPLETER ERROR] Refresh bekleme hatası: $completerError');
+                  await _handleLogout();
                   return handler.reject(error);
                 }
               }
 
-              // ✅ FIX: Yeni bir Completer oluştur
+              // Yeni bir Completer oluştur
               _isRefreshing = true;
               _tokenRefreshCompleter = Completer<String>();
 
@@ -102,14 +112,23 @@ class ApiClient {
 
               if (refreshToken == null || refreshToken.isEmpty) {
                 debugPrint('❌ [REFRESH TOKEN] Bulunamadı, logout yapılıyor...');
-                _tokenRefreshCompleter!.completeError('Refresh token not found');
+
+                // Completer'ı hatayla tamamla
+                if (!_tokenRefreshCompleter!.isCompleted) {
+                  _tokenRefreshCompleter!.completeError(
+                    Exception('Refresh token not found'),
+                  );
+                }
+
                 _isRefreshing = false;
                 _tokenRefreshCompleter = null;
+                _refreshRetryCount = 0;
+
                 await _handleLogout();
                 return handler.reject(error);
               }
 
-              debugPrint('🔄 [TOKEN REFRESH] Yeni token isteniyor...');
+              debugPrint('🔄 [TOKEN REFRESH] Yeni token isteniyor... (Deneme: ${_refreshRetryCount + 1}/$_maxRefreshRetries)');
 
               // Yeni token isteği yap (Authorization header'ı olmadan)
               final refreshResponse = await _dio.post(
@@ -121,6 +140,11 @@ class ApiClient {
                     'Content-Type': 'application/json',
                   },
                 ),
+              ).timeout(
+                const Duration(seconds: 10),
+                onTimeout: () {
+                  throw TimeoutException('Token refresh request timeout');
+                },
               );
 
               // Yeni token'ları kaydet
@@ -129,9 +153,18 @@ class ApiClient {
 
               if (newAccessToken == null) {
                 debugPrint('❌ [TOKEN REFRESH] Yeni access token alınamadı');
-                _tokenRefreshCompleter!.completeError('New access token not received');
+
+                // Completer'ı hatayla tamamla
+                if (!_tokenRefreshCompleter!.isCompleted) {
+                  _tokenRefreshCompleter!.completeError(
+                    Exception('New access token not received'),
+                  );
+                }
+
                 _isRefreshing = false;
                 _tokenRefreshCompleter = null;
+                _refreshRetryCount = 0;
+
                 await _handleLogout();
                 return handler.reject(error);
               }
@@ -144,8 +177,13 @@ class ApiClient {
 
               debugPrint('✅ [TOKEN REFRESH] Yeni token kaydedildi');
 
-              // ✅ FIX: Completer'ı tamamla - bekleyen tüm istekler devam edecek
-              _tokenRefreshCompleter!.complete(newAccessToken);
+              // Retry sayacını sıfırla (başarılı refresh)
+              _refreshRetryCount = 0;
+
+              // Completer'ı tamamla - bekleyen tüm istekler devam edecek
+              if (!_tokenRefreshCompleter!.isCompleted) {
+                _tokenRefreshCompleter!.complete(newAccessToken);
+              }
 
               // Başarısız olan isteği yeniden dene
               final requestOptions = error.requestOptions;
@@ -155,7 +193,7 @@ class ApiClient {
 
               final retryResponse = await _dio.fetch(requestOptions);
 
-              // ✅ FIX: İşlem tamamlandı, flag'leri temizle
+              // İşlem tamamlandı, flag'leri temizle
               _isRefreshing = false;
               _tokenRefreshCompleter = null;
 
@@ -164,16 +202,27 @@ class ApiClient {
             } catch (refreshError) {
               debugPrint('❌ [TOKEN REFRESH ERROR] $refreshError');
 
-              // ✅ FIX: Hata durumunda Completer'ı hatayla tamamla
+              // Completer'ı hatayla tamamla (henüz tamamlanmadıysa)
               if (_tokenRefreshCompleter != null && !_tokenRefreshCompleter!.isCompleted) {
                 _tokenRefreshCompleter!.completeError(refreshError);
               }
 
+              // Retry sayacını artır
+              _refreshRetryCount++;
+
+              // Flag'leri temizle
               _isRefreshing = false;
               _tokenRefreshCompleter = null;
 
-              // Refresh başarısız oldu, logout yap
-              await _handleLogout();
+              // Max retry aşıldıysa logout yap
+              if (_refreshRetryCount >= _maxRefreshRetries) {
+                debugPrint('⚠️ [MAX RETRY] Token refresh max retry aşıldı, logout yapılıyor...');
+                _refreshRetryCount = 0;
+                await _handleLogout();
+              } else {
+                debugPrint('⚠️ [RETRY] Token refresh tekrar denenecek...');
+              }
+
               return handler.reject(error);
             }
           }
@@ -194,7 +243,7 @@ class ApiClient {
     );
   }
 
-  // 🔥 Logout işlemini merkezi olarak yönet
+  /// Logout işlemini merkezi olarak yönet
   Future<void> _handleLogout() async {
     try {
       debugPrint('🚪 [LOGOUT] Token temizleniyor ve callback çağrılıyor...');
@@ -216,6 +265,14 @@ class ApiClient {
     } catch (e) {
       debugPrint('⚠️ [LOGOUT ERROR] $e');
     }
+  }
+
+  /// Token refresh durumunu sıfırla (test veya debug için)
+  void resetRefreshState() {
+    _isRefreshing = false;
+    _tokenRefreshCompleter = null;
+    _refreshRetryCount = 0;
+    debugPrint('🔄 [RESET] Token refresh state sıfırlandı');
   }
 
   // GET Request

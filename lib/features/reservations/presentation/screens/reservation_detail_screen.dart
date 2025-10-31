@@ -932,47 +932,58 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     );
   }
 
+  // **** DEĞİŞİKLİK BURADA: _showDeleteDialog ****
   void _showDeleteDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog( // dialogContext kullanılıyor
         title: const Text('Rezervasyonu Sil'),
         content: const Text(
           'Bu rezervasyonu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext), // dialogContext
             child: const Text('İptal'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-
+              // **** GÜNCELLEME BAŞLANGICI ****
+              // Async işlem öncesi context'e bağlı nesneleri yakala
+              // Provider'ı dialogContext'ten değil, ana 'context'ten okumak daha güvenli olabilir,
+              // ancak dialog'un context'i de (dialogContext) çalışmalıdır.
+              // En güvenlisi widget'ın ana context'ini kullanmaktır.
               final provider = context.read<ReservationProvider>();
+              final router = GoRouter.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
+              // Dialog'u kapat
+              Navigator.pop(dialogContext); // dialogContext
+
+              // Async işlemi gerçekleştir
               final success = await provider.cancelReservation(
                 widget.reservationId,
                 'Kullanıcı tarafından silindi',
               );
 
-              if (mounted) {
-                if (success) {
-                  context.go('/reservations');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Rezervasyon silindi'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(provider.errorMessage ?? 'Silinemedi'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+              // Yakalanan nesneleri kullan (artık 'mounted' kontrolüne gerek yok)
+              if (success) {
+                router.go('/reservations'); // Yakalanan 'router'ı kullan
+                messenger.showSnackBar( // Yakalanan 'messenger'ı kullan
+                  const SnackBar(
+                    content: Text('Rezervasyon silindi'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                messenger.showSnackBar( // Yakalanan 'messenger'ı kullan
+                  SnackBar(
+                    content: Text(provider.errorMessage ?? 'Silinemedi'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
+              // **** GÜNCELLEME SONU ****
             },
             child: const Text('Sil', style: TextStyle(color: Colors.red)),
           ),

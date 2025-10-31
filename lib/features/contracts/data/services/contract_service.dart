@@ -2,6 +2,7 @@
 
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../config/constants.dart'; // 🔥 EKLENDİ
 import '../models/contract_model.dart';
 
 /// Contract Service - API operations for contracts
@@ -9,6 +10,9 @@ class ContractService {
   final ApiClient _apiClient;
 
   ContractService(this._apiClient);
+
+  // 🔥 FIX: ApiClient'i dışarıya açıyoruz (ContractDocxExportService için)
+  ApiClient get apiClient => _apiClient;
 
   /// Get all contracts with optional filters
   Future<List<ContractModel>> getContracts({
@@ -51,7 +55,7 @@ class ContractService {
       }
 
       final response = await _apiClient.get(
-        '/sales/contracts/',
+        ApiConstants.contracts,
         queryParameters: queryParameters,
       );
 
@@ -70,7 +74,7 @@ class ContractService {
   /// Get contract by ID
   Future<ContractModel> getContractById(int id) async {
     try {
-      final response = await _apiClient.get('/sales/contracts/$id/');
+      final response = await _apiClient.get('${ApiConstants.contracts}$id/');
       return ContractModel.fromJson(response.data);
     } catch (e) {
       throw _handleError(e);
@@ -102,7 +106,7 @@ class ContractService {
       }
 
       final response = await _apiClient.post(
-        '/sales/contracts/',
+        ApiConstants.contracts,
         data: data,
       );
 
@@ -133,7 +137,7 @@ class ContractService {
       }
 
       final response = await _apiClient.patch(
-        '/sales/contracts/$id/',
+        '${ApiConstants.contracts}$id/',
         data: data,
       );
 
@@ -147,7 +151,7 @@ class ContractService {
   Future<ContractModel> markAsSigned(int id) async {
     try {
       final response = await _apiClient.post(
-        '/sales/contracts/$id/mark_as_signed/',
+        '${ApiConstants.contracts}$id/mark_as_signed/',
       );
       return ContractModel.fromJson(response.data);
     } catch (e) {
@@ -162,7 +166,7 @@ class ContractService {
   }) async {
     try {
       final response = await _apiClient.post(
-        '/sales/contracts/$id/cancel/',
+        '${ApiConstants.contracts}$id/cancel/',
         data: {'cancellation_reason': reason},
       );
       return ContractModel.fromJson(response.data);
@@ -174,7 +178,7 @@ class ContractService {
   /// Generate contract PDF
   Future<void> generatePdf(int id) async {
     try {
-      await _apiClient.post('/sales/contracts/$id/generate_pdf/');
+      await _apiClient.post('${ApiConstants.contracts}$id/generate_pdf/');
     } catch (e) {
       throw _handleError(e);
     }
@@ -202,7 +206,7 @@ class ContractService {
   /// Delete contract
   Future<void> deleteContract(int id) async {
     try {
-      await _apiClient.delete('/sales/contracts/$id/');
+      await _apiClient.delete('${ApiConstants.contracts}$id/');
     } catch (e) {
       throw _handleError(e);
     }

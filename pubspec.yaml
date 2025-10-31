@@ -57,7 +57,7 @@ dependencies:
   # Device Info
   device_info_plus: ^10.1.0
 
-  # 🔥 YENİ EKLENENLER - Contract Yönetimi İçin
+  # 🔥 Contract Yönetimi & Export İçin
   
   # URL Launcher (PDF Açma)
   url_launcher: ^6.2.4
@@ -68,24 +68,31 @@ dependencies:
   # Permission Handler (Dosya İzinleri)
   permission_handler: ^11.3.0
   
-  # File Picker (Dosya Seçme - Opsiyonel)
+  # File Picker (Dosya Seçme)
   file_picker: ^10.3.3
-  csv: ^6.0.0
-  syncfusion_flutter_datagrid: ^26.1.35
   
-  # PDF Viewer (PDF Görüntüleme - Opsiyonel)
+  # CSV Export
+  csv: ^6.0.0
+  
+  # Excel Export & DataGrid
+  syncfusion_flutter_datagrid: ^26.1.35
+  excel: ^2.1.0
+  
+  # PDF Operations
   flutter_pdfview: ^1.3.2
   pdf: ^3.10.4
   printing: ^5.11.0
-  excel: ^2.1.0
   
+  # 🔥 DOCX Export (YENİ)
+  docx_template: ^0.4.0
   
-  # Share Plus (PDF Paylaşma - Opsiyonel)
+  # Share & Open Files
   share_plus: ^7.2.2
-  
-  # Open File (Dosya Açma - Opsiyonel)
   open_file: ^3.3.2
+  open_filex: ^4.3.4
+  archive: ^3.6.1
   
+  # Functional Programming
   dartz: ^0.10.1
 
 dev_dependencies:
@@ -97,5 +104,47 @@ dev_dependencies:
   retrofit_generator: ^10.0.6
   freezed: ^3.2.3
 
+# ============================================================
+# 🎨 ASSETS CONFIGURATION
+# ============================================================
 flutter:
   uses-material-design: true
+
+  # ============================================================
+  # 📁 ASSETS KLASÖRLERI
+  # ============================================================
+  assets:
+    # Images
+    - assets/images/
+    - assets/images/logo.png
+    - assets/images/placeholder.png
+    - assets/images/empty_state.png
+    
+    # Icons
+    - assets/icons/
+    
+    # Templates (DOCX, PDF vb.)
+    - assets/templates/
+    - assets/templates/contract_template.docx
+    - assets/templates/report_template.docx
+    - assets/templates/invoice_template.docx
+    
+    # Fonts (Eğer custom font kullanıyorsanız)
+    # - assets/fonts/
+    
+    # Localization (Eğer manuel JSON kullanıyorsanız)
+    # - assets/locales/
+    # - assets/locales/tr.json
+    # - assets/locales/en.json
+
+  # ============================================================
+  # 🔤 CUSTOM FONTS (Opsiyonel)
+  # ============================================================
+  # fonts:
+  #   - family: CustomFont
+  #     fonts:
+  #       - asset: assets/fonts/CustomFont-Regular.ttf
+  #       - asset: assets/fonts/CustomFont-Bold.ttf
+  #         weight: 700
+  #       - asset: assets/fonts/CustomFont-Italic.ttf
+  #         style: italic

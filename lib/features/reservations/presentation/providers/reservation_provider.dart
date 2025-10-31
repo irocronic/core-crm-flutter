@@ -127,12 +127,14 @@ class ReservationProvider extends ChangeNotifier {
     }
   }
 
+  // **** DEĞİŞİKLİK 1: GÜVENLİK KONTROLÜ (if) KALDIRILDI ****
   void setListType(ReservationListType type) {
-    if (_listType == type) return;
+    // if (_listType == type) return; // <-- BU SATIR KALDIRILDI
     _listType = type;
     notifyListeners();
-    loadReservations(refresh: true);
+    loadReservations(refresh: true); // Her zaman listeyi yenile
   }
+  // **** DEĞİŞİKLİK 1 SONU ****
 
   // Hem 'SATISA_DONUSTU' hem de 'AKTIF' durumları isteniyor
   Future<void> loadSalesByCustomer(int customerId) async {
@@ -210,14 +212,18 @@ class ReservationProvider extends ChangeNotifier {
     }
   }
 
+  // **** DEĞİŞİKLİK 2: LİSTEYİ MANUEL GÜNCELLEME KISMI KALDIRILDI ****
   Future<bool> createReservation(Map<String, dynamic> data) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final newReservation = await _reservationService.createReservation(data); // ✅ Değişken adı düzeltildi
-      _reservations.insert(0, newReservation);
+      // Sadece API'ye kaydet, lokal listeyi DOKUNMA.
+      await _reservationService.createReservation(data); // ✅ Değişken adı düzeltildi
+
+      // _reservations.insert(0, newReservation); // <-- BU SATIR KALDIRILDI
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -228,6 +234,8 @@ class ReservationProvider extends ChangeNotifier {
       return false;
     }
   }
+  // **** DEĞİŞİKLİK 2 SONU ****
+
 
   Future<bool> convertToSale(int id) async {
     _isLoading = true;

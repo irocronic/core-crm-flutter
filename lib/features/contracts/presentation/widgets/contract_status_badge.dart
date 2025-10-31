@@ -2,10 +2,9 @@
 
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
 import '../../data/models/contract_model.dart';
 
-/// Contract Status Badge Widget
+/// Contract Status Badge Widget with Theme Support
 class ContractStatusBadge extends StatelessWidget {
   final ContractStatus status;
 
@@ -16,10 +15,12 @@ class ContractStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _getBackgroundColor(),
+        color: _getBackgroundColor(isDark),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -28,14 +29,15 @@ class ContractStatusBadge extends StatelessWidget {
           Icon(
             _getIcon(),
             size: 14,
-            color: _getTextColor(),
+            color: _getTextColor(isDark),
           ),
           const SizedBox(width: 6),
           Text(
             status.displayName,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: _getTextColor(),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: _getTextColor(isDark),
               fontWeight: FontWeight.w600,
+              fontSize: 11,
             ),
           ),
         ],
@@ -43,32 +45,57 @@ class ContractStatusBadge extends StatelessWidget {
     );
   }
 
-  Color _getBackgroundColor() {
+  /// Tema'ya göre arka plan rengi döndürür
+  Color _getBackgroundColor(bool isDark) {
     switch (status) {
       case ContractStatus.draft:
-        return Colors.grey.shade200;
+        return isDark
+            ? Colors.grey.shade800.withOpacity(0.5)
+            : Colors.grey.shade200;
+
       case ContractStatus.pendingApproval:
-        return Colors.orange.shade100;
+        return isDark
+            ? Colors.orange.shade900.withOpacity(0.4)
+            : Colors.orange.shade100;
+
       case ContractStatus.signed:
-        return Colors.green.shade100;
+        return isDark
+            ? Colors.green.shade900.withOpacity(0.4)
+            : Colors.green.shade100;
+
       case ContractStatus.cancelled:
-        return Colors.red.shade100;
+        return isDark
+            ? Colors.red.shade900.withOpacity(0.4)
+            : Colors.red.shade100;
     }
   }
 
-  Color _getTextColor() {
+  /// Tema'ya göre metin/ikon rengi döndürür
+  Color _getTextColor(bool isDark) {
     switch (status) {
       case ContractStatus.draft:
-        return Colors.grey.shade700;
+        return isDark
+            ? Colors.grey.shade300
+            : Colors.grey.shade700;
+
       case ContractStatus.pendingApproval:
-        return Colors.orange.shade800;
+        return isDark
+            ? Colors.orange.shade200
+            : Colors.orange.shade800;
+
       case ContractStatus.signed:
-        return Colors.green.shade800;
+        return isDark
+            ? Colors.green.shade200
+            : Colors.green.shade800;
+
       case ContractStatus.cancelled:
-        return Colors.red.shade800;
+        return isDark
+            ? Colors.red.shade200
+            : Colors.red.shade800;
     }
   }
 
+  /// Status'a göre ikon döndürür
   IconData _getIcon() {
     switch (status) {
       case ContractStatus.draft:
