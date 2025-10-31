@@ -14,12 +14,14 @@ import '../widgets/note_list_widget.dart';
 import '../widgets/note_form_dialog.dart';
 import '../widgets/activity_form_dialog.dart';
 import '../widgets/customer_timeline_widget.dart';
-// **** YENİ IMPORT ****
 import '../widgets/customer_sales_list_widget.dart';
-// EKLENEN KOD: CustomDrawer bileşenini içe aktarma
 import '../../../../shared/widgets/custom_drawer.dart';
-// **** YENİ IMPORT SONU ****
 import '../../data/models/customer_model.dart';
+
+// **** YENİ IMPORT'LAR ****
+import '../../../sales/presentation/providers/buyer_details_provider.dart';
+import '../widgets/customer_buyer_details_widget.dart';
+// **** YENİ IMPORT'LAR SONU ****
 
 
 class CustomerDetailScreen extends StatefulWidget {
@@ -39,7 +41,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
   @override
   void initState() {
     super.initState();
-    // **** GÜNCELLEME: Sekme sayısı 4'e çıkarıldı ****
+    // **** GÜNCELLEME: Sekme sayısı 4'te kaldı ****
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabSelection); // FAB kontrolü için listener
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,6 +50,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
       customerProvider.loadCustomerTimeline(widget.customerId);
       context.read<NoteProvider>().loadNotesByCustomer(widget.customerId);
       context.read<UserProvider>().loadSalesReps();
+
+      // **** YENİ: Alıcı Detaylarını Yükle ****
+      context.read<BuyerDetailsProvider>().loadBuyerDetails(widget.customerId);
     });
   }
 
@@ -63,6 +68,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
   void dispose() {
     _tabController.removeListener(_handleTabSelection); // Listener'ı kaldır
     _tabController.dispose();
+
+    // **** YENİ: Ekrandan çıkarken BuyerDetails'ı temizle ****
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<BuyerDetailsProvider>().clearBuyerDetails();
+      }
+    });
+
     super.dispose();
   }
 
@@ -190,7 +203,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
   Widget build(BuildContext context) {
     final isManager = context.watch<AuthProvider>().isSalesManager;
     return Scaffold(
-      // EKLENEN KOD: CustomDrawer buraya eklenmiştir.
       drawer: const CustomDrawer(),
       appBar: AppBar(
         title: const Text('Müşteri Detayı'),
@@ -276,9 +288,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
                         Tab(icon: Icon(Icons.timeline), text: 'Zaman Tüneli'),
                         Tab(icon: Icon(Icons.person), text: 'Detaylar'),
                         Tab(icon: Icon(Icons.note_alt), text: 'Notlar'),
-                        // **** YENİ SEKME ****
                         Tab(icon: Icon(Icons.point_of_sale), text: 'Satışlar'),
-                        // **** YENİ SEKME SONU ****
                       ],
                     ),
                   ),
@@ -291,7 +301,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
               children: [
                 // 1. Zaman Tüneli Sekmesi
                 const CustomerTimelineWidget(),
-                // 2. Detaylar Sekmesi
+
+                // 2. Detaylar Sekmesi (**** GÜNCELLENDİ ****)
                 SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Column(
@@ -351,6 +362,18 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
                             ),
                         ],
                       ),
+
+                      // **** YENİ BÖLÜM: ALICI DETAYLARI ****
+                      _buildSection(
+                        context,
+                        title: 'Alıcı Detayları (Sözleşme)',
+                        icon: Icons.badge_outlined,
+                        children: [
+                          CustomerBuyerDetailsWidget(customerId: customer.id),
+                        ],
+                      ),
+                      // **** YENİ BÖLÜM SONU ****
+
                       _buildSection(
                         context,
                         title: 'Sistem Bilgileri',
@@ -389,15 +412,13 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Ticker
                     );
                   },
                 ),
-                // **** YENİ GÖRÜNÜM ****
+                // 4. Satışlar Sekmesi
                 CustomerSalesListWidget(customerId: widget.customerId),
-                // **** YENİ GÖRÜNÜM SONU ****
               ],
             ),
           );
         },
       ),
-      // **** GÜNCELLEME: FAB görünürlüğü tab index'e göre ayarlandı ****
       floatingActionButton: (_tabController.index == 0 || // Zaman Tüneli
           _tabController.index == 1 || // Detaylar
           _tabController.index == 2)   // Notlar

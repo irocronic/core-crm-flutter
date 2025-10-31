@@ -30,8 +30,11 @@ import 'features/reports/domain/usecases/get_sales_report_by_id.dart';
 import 'features/reports/data/repositories/sales_report_repository_impl.dart';
 import 'features/reports/data/datasources/sales_report_remote_datasource.dart';
 import 'features/users/presentation/providers/user_provider.dart';
-// **** YENİ IMPORT ****
 import 'features/settings/presentation/providers/seller_company_provider.dart';
+
+// **** YENİ IMPORT ****
+import 'features/sales/presentation/providers/buyer_details_provider.dart';
+import 'features/sales/data/services/buyer_details_service.dart';
 
 // Firebase Background Message Handler
 @pragma('vm:entry-point')
@@ -95,7 +98,6 @@ void main() async {
   // Network Info (İnternet bağlantı kontrolü)
   final networkInfo = NetworkInfoImpl(Connectivity());
   print('✅ Network Info başlatıldı');
-
   // ==========================================
   // 🔥 Sales Report Dependencies
   // ==========================================
@@ -239,11 +241,19 @@ void main() async {
           },
         ),
 
-        // **** YENİ PROVIDER ****
+        // SellerCompany Provider
         ChangeNotifierProvider(
           create: (context) {
             print('⚙️ SellerCompanyProvider (Settings) oluşturuluyor...');
             return SellerCompanyProvider(apiClient);
+          },
+        ),
+
+        // **** YENİ PROVIDER ****
+        ChangeNotifierProvider(
+          create: (context) {
+            print('👤 BuyerDetailsProvider oluşturuluyor...');
+            return BuyerDetailsProvider(apiClient);
           },
         ),
         // **** YENİ PROVIDER SONU ****
