@@ -1,6 +1,9 @@
 // lib/features/contracts/data/models/contract_model.dart
 
 import 'package:flutter/foundation.dart';
+// **** YENİ IMPORT ****
+import '../../../settings/data/models/seller_company_model.dart';
+// **** YENİ IMPORT SONU ****
 
 /// Contract Type Enum
 enum ContractType {
@@ -156,6 +159,9 @@ class ReservationDetails {
   final String? salesRepName;
   final String status;
   final String statusDisplay;
+  // **** YENİ ALAN ****
+  final SellerCompanyModel? sellerCompanyInfo;
+  // **** YENİ ALAN SONU ****
 
   ReservationDetails({
     required this.id,
@@ -171,6 +177,7 @@ class ReservationDetails {
     this.salesRepName,
     required this.status,
     required this.statusDisplay,
+    this.sellerCompanyInfo, // **** YENİ PARAMETRE ****
   });
 
   factory ReservationDetails.fromJson(Map<String, dynamic> json) {
@@ -190,6 +197,11 @@ class ReservationDetails {
       salesRepName: json['sales_rep_name'] as String?,
       status: json['status'] as String,
       statusDisplay: json['status_display'] as String,
+      // **** YENİ JSON OKUMASI ****
+      sellerCompanyInfo: json['seller_company_info'] != null
+          ? SellerCompanyModel.fromJson(json['seller_company_info'] as Map<String, dynamic>)
+          : null,
+      // **** YENİ JSON OKUMASI SONU ****
     );
   }
 

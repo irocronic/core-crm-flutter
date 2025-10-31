@@ -29,6 +29,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   final _nameController = TextEditingController();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
+
+  // **** YENİ ALANLAR BAŞLANGIÇ ****
+  final _provinceController = TextEditingController(); // İl
+  final _districtController = TextEditingController(); // İlçe
+  // **** YENİ ALANLAR SONU ****
+
   final _islandController = TextEditingController();
   final _parcelController = TextEditingController();
   final _blockController = TextEditingController();
@@ -58,6 +64,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     _nameController.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
+
+    // **** YENİ ALANLAR BAŞLANGIÇ ****
+    _provinceController.dispose();
+    _districtController.dispose();
+    // **** YENİ ALANLAR SONU ****
+
     _islandController.dispose();
     _parcelController.dispose();
     _blockController.dispose();
@@ -124,6 +136,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       'name': _nameController.text.trim(),
       'location': _locationController.text.trim(),
       'description': _descriptionController.text.trim(),
+
+      // **** YENİ ALANLAR BAŞLANGIÇ ****
+      'province': _provinceController.text.trim(),
+      'district': _districtController.text.trim(),
+      // **** YENİ ALANLAR SONU ****
+
       'island': _islandController.text.trim(),
       'parcel': _parcelController.text.trim(),
       'block': _blockController.text.trim(),
@@ -243,6 +261,30 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                 decoration: const InputDecoration(labelText: 'Konum'),
               ),
               const SizedBox(height: 16),
+
+              // **** YENİ ALANLAR BAŞLANGIÇ ****
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _provinceController,
+                      decoration: const InputDecoration(labelText: 'İl'),
+                      // Validator gerekmiyor (modelde blank=True)
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _districtController,
+                      decoration: const InputDecoration(labelText: 'İlçe'),
+                      // Validator gerekmiyor (modelde blank=True)
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // **** YENİ ALANLAR SONU ****
+
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(

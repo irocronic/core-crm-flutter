@@ -90,6 +90,8 @@ class ContractDocxExportService {
       debugPrint('✅ [DOCX Export] Full contract data çekildi');
       debugPrint('📦 [Contract Details] reservation_details: ${fullContract.reservationDetails != null}');
       debugPrint('📦 [Contract Details] sale_details: ${fullContract.saleDetails != null}');
+      // **** DÜZELTİLMİŞ KONTROL: sellerCompanyInfo ****
+      debugPrint('📦 [Contract Details] seller_company_info: ${fullContract.reservationDetails?.sellerCompanyInfo != null}');
 
       return fullContract;
     } catch (e) {
@@ -379,13 +381,26 @@ class ContractDocxExportService {
     }
 
     // ============================================================
-    // 🔥 ŞİRKET BİLGİLERİ
+    // 🔥 ŞİRKET BİLGİLERİ (**** DÜZELTME ****)
     // ============================================================
-    replacements['company_name'] = 'RealtyFlow CRM';
-    replacements['company_address'] = 'İstanbul, Türkiye';
-    replacements['company_phone'] = '+90 (xxx) xxx xx xx';
-    replacements['company_email'] = 'info@realtyflow.com';
-    replacements['company_website'] = 'www.realtyflow.com';
+    // Sabit kodlanmış veriler yerine modelden gelen dinamik veriler kullanıldı
+
+    final company = contract.reservationDetails?.sellerCompanyInfo;
+
+    replacements['company_name'] = company?.companyName ?? 'N/A';
+    replacements['company_address'] = company?.businessAddress ?? 'N/A';
+    replacements['company_phone'] = company?.businessPhone ?? 'N/A';
+    replacements['tax_office'] = company?.taxOffice ?? 'N/A';
+    replacements['tax_number'] = company?.taxNumber ?? 'N/A';
+    replacements['mersis_number'] = company?.mersisNumber ?? 'N/A';
+
+    // Bu alanlar şablonunuzda yoktu, ama eğer eklerseniz modelde yoklar (Sadece Django'da SellerCompany'ye eklenirse gelir)
+    // replacements['company_email'] = company?.email ?? 'N/A';
+    // replacements['company_website'] = company?.website ?? 'N/A';
+    // ============================================================
+    // 🔥 DÜZELTME SONU
+    // ============================================================
+
 
     // ============================================================
     // 🔥 YASAL BİLGİLER
