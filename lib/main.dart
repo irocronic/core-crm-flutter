@@ -30,6 +30,8 @@ import 'features/reports/domain/usecases/get_sales_report_by_id.dart';
 import 'features/reports/data/repositories/sales_report_repository_impl.dart';
 import 'features/reports/data/datasources/sales_report_remote_datasource.dart';
 import 'features/users/presentation/providers/user_provider.dart';
+// **** YENİ IMPORT ****
+import 'features/settings/presentation/providers/seller_company_provider.dart';
 
 // Firebase Background Message Handler
 @pragma('vm:entry-point')
@@ -236,6 +238,15 @@ void main() async {
             );
           },
         ),
+
+        // **** YENİ PROVIDER ****
+        ChangeNotifierProvider(
+          create: (context) {
+            print('⚙️ SellerCompanyProvider (Settings) oluşturuluyor...');
+            return SellerCompanyProvider(apiClient);
+          },
+        ),
+        // **** YENİ PROVIDER SONU ****
       ],
       child: const RealtyFlowApp(),
     ),

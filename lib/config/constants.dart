@@ -92,6 +92,14 @@ class ApiConstants {
   static const String markAsRead = '/notifications/notifications/mark-as-read/';
 
   // ==========================================
+  // 🔥 YENİ: Settings (Sales) Endpoints
+  // ==========================================
+  static const String sellerCompanies = '/sales/seller-companies/';
+  static const String buyerDetails = '/sales/buyer-details/';
+  static String buyerDetailsByCustomer(int customerId) => '/sales/buyer-details/by_customer/$customerId/';
+
+
+  // ==========================================
   // ⏱️ Timeout Settings
   // ==========================================
   static const Duration connectionTimeout = Duration(seconds: 30);

@@ -17,7 +17,7 @@ import '../features/properties/presentation/screens/properties_list_screen.dart'
 import '../features/properties/presentation/screens/property_detail_screen.dart'; //
 import '../features/properties/presentation/screens/property_form_screen.dart'; //
 import '../features/properties/presentation/screens/property_stats_screen.dart'; //
-import '../features/properties/presentation/screens/property_bulk_upload_screen.dart'; // <-- Yeni import
+import '../features/properties/presentation/screens/property_bulk_upload_screen.dart'; //
 import '../features/reservations/presentation/screens/reservations_list_screen.dart'; //
 import '../features/reservations/presentation/screens/reservation_form_screen.dart'; //
 import '../features/reservations/presentation/screens/payment_tracking_screen.dart'; //
@@ -33,6 +33,9 @@ import '../features/properties/presentation/screens/project_form_screen.dart'; /
 import '../features/properties/data/models/property_model.dart'; //
 import '../features/properties/presentation/screens/payment_plan_calculator_screen.dart'; //
 import '../features/appointments/presentation/screens/appointment_form_screen.dart'; //
+// **** YENİ IMPORT'LAR ****
+import '../features/settings/presentation/screens/settings_list_screen.dart';
+import '../features/settings/presentation/screens/seller_company_form_screen.dart';
 
 
 class AppRouter {
@@ -230,9 +233,27 @@ class AppRouter {
           path: '/reports/:id', //
           builder: (context, state) { //
             final id = state.pathParameters['id']!; //
-            return SalesReportDetailScreen(reportId: id); //
+            return SalesReportDetailScreen(reportId: id);
           },
         ),
+
+        // **** YENİ AYARLAR ROTALARI ****
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsListScreen(),
+        ),
+        GoRoute(
+          path: '/settings/seller-company/new',
+          builder: (context, state) => const SellerCompanyFormScreen(),
+        ),
+        GoRoute(
+          path: '/settings/seller-company/:id/edit',
+          builder: (context, state) {
+            final id = int.parse(state.pathParameters['id']!);
+            return SellerCompanyFormScreen(companyId: id);
+          },
+        ),
+        // **** YENİ ROTALAR SONU ****
       ],
     );
   }

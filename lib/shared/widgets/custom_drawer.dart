@@ -230,18 +230,19 @@ class CustomDrawer extends StatelessWidget {
           const Divider(),
 
           // Settings & Logout
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Ayarlar'),
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Ayarlar sayfası yakında eklenecek'),
-                ),
-              );
-            },
-          ),
+          // **** GÜNCELLEME BAŞLANGICI ****
+          // "Ayarlar" butonu artık sadece Admin ve Satış Müdürü için görünür
+          if (isAdmin || isManager)
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Ayarlar'),
+              onTap: () {
+                Navigator.pop(context);
+                // Artık SnackBar yerine /settings rotasına yönlendiriyoruz
+                context.go('/settings');
+              },
+            ),
+          // **** GÜNCELLEME SONU ****
 
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
