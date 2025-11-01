@@ -1,9 +1,7 @@
 // lib/features/contracts/data/models/contract_model.dart
 
 import 'package:flutter/foundation.dart';
-// **** YENİ IMPORT ****
 import '../../../settings/data/models/seller_company_model.dart';
-// **** YENİ IMPORT SONU ****
 
 /// Contract Type Enum
 enum ContractType {
@@ -54,12 +52,15 @@ class CustomerBasicInfo {
   final String fullName;
   final String? phoneNumber;
   final String? email;
+  // **** YENİ: Alıcı Detayları (PDF için) ****
+  final BuyerDetails? buyerDetails;
 
   CustomerBasicInfo({
     required this.id,
     required this.fullName,
     this.phoneNumber,
     this.email,
+    this.buyerDetails, // **** YENİ ****
   });
 
   factory CustomerBasicInfo.fromJson(Map<String, dynamic> json) {
@@ -68,14 +69,33 @@ class CustomerBasicInfo {
       fullName: json['full_name'] as String,
       phoneNumber: json['phone_number'] as String?,
       email: json['email'] as String?,
+      // **** YENİ ****
+      buyerDetails: json['buyer_details'] != null
+          ? BuyerDetails.fromJson(json['buyer_details'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   String? get phone => phoneNumber;
 }
 
+// **** YENİ: BuyerDetails (minimal) ****
+class BuyerDetails {
+  final String? tcNumber;
+  final String? businessAddress; // Tebligat adresi olarak bunu kullanabiliriz
+
+  BuyerDetails({this.tcNumber, this.businessAddress});
+
+  factory BuyerDetails.fromJson(Map<String, dynamic> json) {
+    return BuyerDetails(
+      tcNumber: json['tc_number'] as String?,
+      businessAddress: json['business_address'] as String?,
+    );
+  }
+}
+
 /// Property Basic Info (Nested)
-/// ✅ GÜNCELLENDİ: project_name ve net_area eklendi
+/// ✅ GÜNCELLENDİ: Tüm proje detayları eklendi
 class PropertyBasicInfo {
   final int id;
   final String block;
@@ -83,8 +103,15 @@ class PropertyBasicInfo {
   final String unitNumber;
   final String propertyType;
   final String roomCount;
-  final String? projectName; // ✅ YENİ
-  final String? netArea;     // ✅ YENİ
+  final String? projectName;
+  final String? netArea;
+  // **** YENİ ALANLAR ****
+  final String? projectProvince;
+  final String? projectDistrict;
+  final String? projectLocation; // Mahalle
+  final String? projectIsland;   // Ada
+  final String? projectParcel;   // Pafta
+  // **** YENİ ALANLAR SONU ****
 
   PropertyBasicInfo({
     required this.id,
@@ -95,6 +122,13 @@ class PropertyBasicInfo {
     required this.roomCount,
     this.projectName,
     this.netArea,
+    // **** YENİ PARAMETRELER ****
+    this.projectProvince,
+    this.projectDistrict,
+    this.projectLocation,
+    this.projectIsland,
+    this.projectParcel,
+    // **** YENİ PARAMETRELER SONU ****
   });
 
   factory PropertyBasicInfo.fromJson(Map<String, dynamic> json) {
@@ -105,8 +139,15 @@ class PropertyBasicInfo {
       unitNumber: json['unit_number'] as String,
       propertyType: json['property_type'] as String,
       roomCount: json['room_count'] as String,
-      projectName: json['project_name'] as String?, // ✅ YENİ
-      netArea: json['net_area'] as String?,         // ✅ YENİ
+      projectName: json['project_name'] as String?,
+      netArea: json['net_area'] as String?,
+      // **** YENİ JSON OKUMALARI ****
+      projectProvince: json['project_province'] as String?,
+      projectDistrict: json['project_district'] as String?,
+      projectLocation: json['project_location'] as String?,
+      projectIsland: json['project_island'] as String?,
+      projectParcel: json['project_parcel'] as String?,
+      // **** YENİ JSON OKUMALARI SONU ****
     );
   }
 
@@ -153,15 +194,13 @@ class ReservationDetails {
   final String depositPaymentMethod;
   final String depositPaymentMethodDisplay;
   final CustomerBasicInfo customer;
-  final PropertyBasicInfo property; // ✅ GÜNCELLENDİ (project_name + net_area içerir)
+  final PropertyBasicInfo property;
   final PaymentPlanBasicInfo? paymentPlanSelected;
   final int? salesRep;
   final String? salesRepName;
   final String status;
   final String statusDisplay;
-  // **** YENİ ALAN ****
   final SellerCompanyModel? sellerCompanyInfo;
-  // **** YENİ ALAN SONU ****
 
   ReservationDetails({
     required this.id,
@@ -177,7 +216,7 @@ class ReservationDetails {
     this.salesRepName,
     required this.status,
     required this.statusDisplay,
-    this.sellerCompanyInfo, // **** YENİ PARAMETRE ****
+    this.sellerCompanyInfo,
   });
 
   factory ReservationDetails.fromJson(Map<String, dynamic> json) {
@@ -197,11 +236,9 @@ class ReservationDetails {
       salesRepName: json['sales_rep_name'] as String?,
       status: json['status'] as String,
       statusDisplay: json['status_display'] as String,
-      // **** YENİ JSON OKUMASI ****
       sellerCompanyInfo: json['seller_company_info'] != null
           ? SellerCompanyModel.fromJson(json['seller_company_info'] as Map<String, dynamic>)
           : null,
-      // **** YENİ JSON OKUMASI SONU ****
     );
   }
 

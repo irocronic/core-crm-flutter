@@ -38,6 +38,8 @@ class ContractDocxExportService {
       }
 
       // 1. Template dosyasını yükle
+      // DİKKAT: Python script'iniz 'contract_template_new.docx' üretiyorsa, bu yolu güncelleyin.
+      // Şimdilik gönderdiğiniz dosyadaki orijinal yolu koruyorum.
       final byteData = await rootBundle.load('assets/templates/contract_template.docx');
       final templateBytes = byteData.buffer.asUint8List();
       debugPrint('✅ [DOCX Export] Template yüklendi (${templateBytes.length} bytes)');
@@ -101,7 +103,7 @@ class ContractDocxExportService {
   }
 
   /// Placeholder değerlerini hazırlar - EKSİKSİZ VERSİYON
-  /// ✅ GÜNCELLENDİ: net_area ve project_name eklendi
+  /// ✅ GÜNCELLENDİ: Tüm yeni PDF alanları eklendi
   Map<String, String> _prepareReplacements(ContractModel contract) {
     final dateFormat = DateFormat('dd MMMM yyyy', 'tr_TR');
     final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
@@ -149,6 +151,10 @@ class ContractDocxExportService {
       replacements['customer_name'] = reservation.customer.fullName;
       replacements['customer_phone'] = reservation.customer.phoneNumber ?? '-';
       replacements['customer_email'] = reservation.customer.email ?? '-';
+      // **** YENİ MÜŞTERİ ALANLARI (PDF'den) ****
+      replacements['customer_tc_number'] = reservation.customer.buyerDetails?.tcNumber ?? '-';
+      replacements['customer_address'] = reservation.customer.buyerDetails?.businessAddress ?? '-';
+      // **** YENİ MÜŞTERİ ALANLARI SONU ****
 
       debugPrint('👤 [Customer] ${reservation.customer.fullName}');
 
@@ -159,20 +165,21 @@ class ContractDocxExportService {
       replacements['block_number'] = reservation.property.block;
       replacements['floor_number'] = reservation.property.floor.toString();
       replacements['apartment_number'] = reservation.property.unitNumber;
-
-      // 🔥 Oda sayısı
       replacements['room_count'] = reservation.property.roomCount;
-
-      // ✅ GÜNCELLENDİ: Net alan (API'den geliyor)
       replacements['net_area'] = reservation.property.netArea ?? '-';
-
-      // ✅ GÜNCELLENDİ: Proje adı (API'den geliyor)
       replacements['project_name'] = reservation.property.projectName ?? '-';
 
+      // **** YENİ PROJE ALANLARI (PDF'den) ****
+      replacements['project_province'] = reservation.property.projectProvince ?? '-';
+      replacements['project_district'] = reservation.property.projectDistrict ?? '-';
+      replacements['project_location'] = reservation.property.projectLocation ?? '-'; // Mahalle
+      replacements['project_island'] = reservation.property.projectIsland ?? '-';     // Ada
+      replacements['project_parcel'] = reservation.property.projectParcel ?? '-';     // Pafta (Parsel)
+      // **** YENİ PROJE ALANLARI SONU ****
+
       debugPrint('🏠 [Property] ${reservation.property.title}');
-      debugPrint('🔢 [Room Count] ${reservation.property.roomCount}');
-      debugPrint('📐 [Net Area] ${reservation.property.netArea ?? "Belirtilmemiş"}');
-      debugPrint('🏗️ [Project Name] ${reservation.property.projectName ?? "Belirtilmemiş"}');
+      debugPrint('📍 [Location] ${reservation.property.projectProvince}, ${reservation.property.projectDistrict}, ${reservation.property.projectLocation}');
+      debugPrint('🗺️ [Cadastre] Ada: ${reservation.property.projectIsland}, Pafta: ${reservation.property.projectParcel}');
 
       // Mülk tam adresi
       final propertyFullAddress = [
@@ -293,6 +300,8 @@ class ContractDocxExportService {
       replacements['customer_name'] = '-';
       replacements['customer_phone'] = '-';
       replacements['customer_email'] = '-';
+      replacements['customer_tc_number'] = '-';
+      replacements['customer_address'] = '-';
       replacements['property_id'] = '-';
       replacements['property_title'] = '-';
       replacements['property_type'] = '-';
@@ -302,6 +311,11 @@ class ContractDocxExportService {
       replacements['room_count'] = '-';
       replacements['net_area'] = '-';
       replacements['project_name'] = '-';
+      replacements['project_province'] = '-';
+      replacements['project_district'] = '-';
+      replacements['project_location'] = '-';
+      replacements['project_island'] = '-';
+      replacements['project_parcel'] = '-';
       replacements['property_full_address'] = '-';
       replacements['payment_plan_name'] = '-';
       replacements['installment_price'] = '-';
@@ -333,6 +347,10 @@ class ContractDocxExportService {
       replacements['sale_customer_name'] = sale.customer.fullName;
       replacements['sale_customer_phone'] = sale.customer.phoneNumber ?? '-';
       replacements['sale_customer_email'] = sale.customer.email ?? '-';
+      // **** YENİ MÜŞTERİ ALANLARI (SATIŞ) ****
+      replacements['customer_tc_number'] = sale.customer.buyerDetails?.tcNumber ?? replacements['customer_tc_number'] ?? '-';
+      replacements['customer_address'] = sale.customer.buyerDetails?.businessAddress ?? replacements['customer_address'] ?? '-';
+
 
       // Mülk Bilgileri (Satış)
       replacements['sale_property_id'] = sale.property.id.toString();
@@ -341,10 +359,15 @@ class ContractDocxExportService {
       replacements['sale_block_number'] = sale.property.block;
       replacements['sale_floor_number'] = sale.property.floor.toString();
       replacements['sale_apartment_number'] = sale.property.unitNumber;
-
-      // ✅ GÜNCELLENDİ: Satış için de net_area ve project_name
       replacements['sale_net_area'] = sale.property.netArea ?? '-';
       replacements['sale_project_name'] = sale.property.projectName ?? '-';
+
+      // **** YENİ PROJE ALANLARI (SATIŞ) ****
+      replacements['project_province'] = sale.property.projectProvince ?? replacements['project_province'] ?? '-';
+      replacements['project_district'] = sale.property.projectDistrict ?? replacements['project_district'] ?? '-';
+      replacements['project_location'] = sale.property.projectLocation ?? replacements['project_location'] ?? '-';
+      replacements['project_island'] = sale.property.projectIsland ?? replacements['project_island'] ?? '-';
+      replacements['project_parcel'] = sale.property.projectParcel ?? replacements['project_parcel'] ?? '-';
 
       // Mülk tam adresi (Satış)
       final salePropertyFullAddress = [
@@ -358,7 +381,7 @@ class ContractDocxExportService {
     } else {
       debugPrint('⚠️ [Replacements] Satış detayları YOK');
 
-      // Satış yoksa boş değerler
+      // Satış yoksa boş değerler (veya rezervasyondan gelenle aynı kalır)
       replacements['sale_number'] = '-';
       replacements['sale_id'] = '-';
       replacements['sale_date'] = '-';
@@ -393,10 +416,6 @@ class ContractDocxExportService {
     replacements['tax_office'] = company?.taxOffice ?? 'N/A';
     replacements['tax_number'] = company?.taxNumber ?? 'N/A';
     replacements['mersis_number'] = company?.mersisNumber ?? 'N/A';
-
-    // Bu alanlar şablonunuzda yoktu, ama eğer eklerseniz modelde yoklar (Sadece Django'da SellerCompany'ye eklenirse gelir)
-    // replacements['company_email'] = company?.email ?? 'N/A';
-    // replacements['company_website'] = company?.website ?? 'N/A';
     // ============================================================
     // 🔥 DÜZELTME SONU
     // ============================================================

@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-// Yeni SelectedImage model importu
+// **** HATA DÜZELTME 1: EKSİK IMPORT EKLENDİ ****
 import '../../data/models/selected_image.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
@@ -54,6 +54,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+
             child: const Text('İptal'),
           ),
           TextButton(
@@ -66,6 +67,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 if (success) {
                   context.go('/properties');
                   ScaffoldMessenger.of(context).showSnackBar(
+
                     const SnackBar(content: Text('Gayrimenkul silindi'), backgroundColor: Colors.green),
                   );
                 } else {
@@ -79,6 +81,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ),
         ],
       ),
+
     );
   }
 
@@ -100,7 +103,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              final provider = context.read<PropertyProvider>();
+              final provider =
+              context.read<PropertyProvider>();
               final success = await onConfirm();
 
               if (mounted) {
@@ -111,6 +115,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   ),
                 );
               }
+
             },
             child: const Text('Sil', style: TextStyle(color: Colors.red)),
           ),
@@ -142,6 +147,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         imageQuality: 85,
       );
       if (pickedFiles.isNotEmpty) {
+        // **** HATA DÜZELTME 2: Yorum satırı eklendi ****
         // XFile listesini SelectedImage listesine sar
         final List<SelectedImage> uploadList = pickedFiles.map((f) => SelectedImage(file: f)).toList();
         final success = await provider.uploadImages(widget.propertyId, uploadList);
@@ -164,7 +170,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget
+  build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
@@ -181,6 +188,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               onPressed: _showDeleteDialog,
+
             ),
           ]
         ],
@@ -196,6 +204,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
                   Text(
@@ -207,6 +216,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               ),
             );
           }
+
 
           final property = provider.selectedProperty;
           if (property == null) {
@@ -227,6 +237,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
                 Padding(
                   padding: const EdgeInsets.all(16),
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -234,6 +245,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: property.statusColor,
+
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -241,6 +253,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
+
                       const SizedBox(height: 16),
                       Text(
                         projectName,
@@ -249,6 +262,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       const SizedBox(height: 8),
                       Text(
                         '$blockText Blok - Kat: $floorText - No: $unitNumberText',
+
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
                       ),
 
@@ -257,27 +271,45 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         children: [
                           Expanded(
                             child: _buildInfoCard(
+
                               context,
-                              title: 'Peşin Fiyat',
-                              value: CurrencyFormatter.format(property.cashPrice),
+                              // **** GÜNCELLEME: KDV DAHİL FİYAT ****
+                              title: 'Peşin Fiyat (KDV Dahil)',
+                              value: CurrencyFormatter.format(property.cashPriceWithVat),
                               icon: Icons.payments,
                               color: Colors.green,
                             ),
+
                           ),
                           if (property.installmentPrice != null) ...[
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildInfoCard(
                                 context,
-                                title: 'Vadeli Fiyat',
-                                value: CurrencyFormatter.format(property.installmentPrice!),
+
+                                // **** GÜNCELLEME: KDV DAHİL FİYAT ****
+                                title: 'Vadeli Fiyat (KDV Dahil)',
+                                value: CurrencyFormatter.format(property.installmentPriceWithVat ?? 0.0),
                                 icon: Icons.credit_card,
                                 color: Colors.blue,
                               ),
+
                             ),
                           ],
                         ],
                       ),
+
+                      // **** YENİ ALAN: KDV DETAYLARI ****
+                      const SizedBox(height: 24),
+                      _buildSection(
+                        context,
+                        title: 'Fiyat Detayları',
+                        children: [
+                          _buildVatDetails(property),
+                        ],
+                      ),
+                      // **** YENİ ALAN SONU ****
+
                       const SizedBox(height: 24),
 
 //******************************************
@@ -290,12 +322,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 //******************************************
 
                       _buildSection(
+
                         context,
                         title: 'Özellikler',
                         children: [
                           _buildDetailRow('Tip', property.propertyTypeDisplay ?? property.propertyType),
                           _buildDetailRow('Oda Sayısı', property.roomCount),
                           _buildDetailRow('Brüt Alan', '${property.grossAreaM2.toStringAsFixed(2)} m²'),
+
                           _buildDetailRow('Net Alan', '${property.netAreaM2.toStringAsFixed(2)} m²'),
                           _buildDetailRow('Cephe', property.facadeDisplay ?? property.facade),
                         ],
@@ -304,24 +338,28 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       _buildSection(
                         context,
                         title: 'Ödeme Planları',
+
                         action: (authProvider.isAdmin || authProvider.isSalesManager)
                             ? IconButton(
                           icon: const Icon(Icons.add_circle, color: Colors.green),
                           onPressed: _showAddPaymentPlanDialog,
                         )
                             : null,
+
                         children: [
                           PaymentPlanListWidget(
                             paymentPlans: property.paymentPlans,
                             onDelete: (authProvider.isAdmin || authProvider.isSalesManager)
                                 ? (planId) {
                               _showGenericDeleteDialog(
+
                                 title: 'Ödeme Planını Sil',
                                 content: 'Bu ödeme planını silmek istediğinizden emin misiniz?',
                                 onConfirm: () => provider.deletePaymentPlan(property.id, planId),
                               );
                             }
                                 : null,
+
                           ),
                         ],
                       ),
@@ -330,18 +368,21 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         context,
                         title: 'Belgeler',
                         action: (authProvider.isAdmin || authProvider.isSalesManager)
+
                             ? IconButton(
                           icon: const Icon(Icons.add_circle, color: Colors.blue),
                           onPressed: _showAddDocumentDialog,
                         )
                             : null,
                         children: [
+
                           DocumentListWidget(
                             documents: property.documents,
                             onDelete: (authProvider.isAdmin || authProvider.isSalesManager)
                                 ? (docId) {
                               _showGenericDeleteDialog(
                                 title: 'Belgeyi Sil',
+
                                 content: 'Bu belgeyi silmek istediğinizden emin misiniz?',
                                 onConfirm: () => provider.deleteDocument(property.id, docId),
                               );
@@ -349,6 +390,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 : null,
                           ),
                         ],
+
                       ),
                       if (property.description != null && property.description!.isNotEmpty) ...[
                         const SizedBox(height: 24),
@@ -356,6 +398,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           context,
                           title: 'Açıklama',
                           children: [Text(property.description!)],
+
                         ),
                       ],
                     ],
@@ -369,7 +412,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       floatingActionButton: Consumer<PropertyProvider>(
         builder: (context, provider, _) {
           final property = provider.selectedProperty;
-          if (property == null || !property.isAvailable) return const SizedBox();
+          if (property
+              == null || !property.isAvailable) return const SizedBox();
 
           if (authProvider.isSalesRep || authProvider.isSalesManager || authProvider.isAdmin) {
             return FloatingActionButton.extended(
@@ -389,6 +433,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
+
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -406,6 +451,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
+
                   Colors.teal.shade600,
                   Colors.teal.shade400,
                 ],
@@ -417,6 +463,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             child: Row(
               children: [
                 Container(
+
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
@@ -426,6 +473,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     Icons.calculate,
                     size: 32,
                     color: Colors.white,
+
                   ),
                 ),
                 const SizedBox(width: 20),
@@ -435,6 +483,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     children: [
                       Text(
                         'Ödeme Planı Çalış',
+
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -442,6 +491,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         ),
                       ),
                       SizedBox(height: 4),
+
                       Text(
                         'Bugünkü değer hesaplaması yapın',
                         style: TextStyle(
@@ -450,6 +500,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         ),
                       ),
                     ],
+
                   ),
                 ),
                 const Icon(
@@ -466,7 +517,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
 
-  Widget _buildImageGallery(BuildContext context, List<PropertyImage> images, bool canEdit) {
+  Widget _buildImageGallery(BuildContext
+  context, List<PropertyImage> images, bool canEdit) {
     return Container(
       height: 250,
       color: Colors.grey[300],
@@ -480,6 +532,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 return Stack(
                   fit: StackFit.expand,
                   children: [
+
                     Image.network(
                       image.imageUrl,
                       fit: BoxFit.cover,
@@ -488,6 +541,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       },
                     ),
                     if (canEdit)
+
                       Positioned(
                         top: 8,
                         right: 8,
@@ -495,12 +549,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () {
                             _showGenericDeleteDialog(
+
                               title: 'Görseli Sil',
                               content: 'Bu görseli silmek istediğinizden emin misiniz?',
                               onConfirm: () => context.read<PropertyProvider>().deleteImage(widget.propertyId, image.id),
                             );
                           },
                           style: IconButton.styleFrom(
+
                               backgroundColor: Colors.white.withOpacity(0.7)
                           ),
                         ),
@@ -513,6 +569,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             const Center(child: Icon(Icons.home_work, size: 80, color: Colors.grey)),
           if (canEdit)
             Positioned(
+
               bottom: 16,
               right: 16,
               child: FloatingActionButton(
@@ -530,6 +587,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       BuildContext context, {
         required String title,
         required String value,
+
         required IconData icon,
         required Color color,
       }) {
@@ -549,6 +607,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           const SizedBox(height: 4),
           Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
         ],
+
       ),
     );
   }
@@ -570,6 +629,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             if (action != null) action,
+
           ],
         ),
         const SizedBox(height: 12),
@@ -590,4 +650,38 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       ),
     );
   }
+
+  // **** YENİ WIDGET: KDV DETAYLARI ****
+  Widget _buildVatDetails(PropertyModel property) {
+    return Column(
+      children: [
+        _buildDetailRow(
+          'Peşin Fiyat (KDV Hariç)',
+          CurrencyFormatter.format(property.cashPrice),
+        ),
+        _buildDetailRow(
+          'KDV Oranı',
+          '%${property.vatRate.toStringAsFixed(0)}', // %20.00 yerine %20
+        ),
+        _buildDetailRow(
+          'KDV Tutarı (Peşin)',
+          CurrencyFormatter.format(property.vatAmountCash),
+        ),
+        if (property.installmentPrice != null && property.vatAmountInstallment != null)
+          ...[
+            const Divider(height: 16),
+            _buildDetailRow(
+              'Vadeli Fiyat (KDV Hariç)',
+              CurrencyFormatter.format(property.installmentPrice!),
+            ),
+            _buildDetailRow(
+              'KDV Tutarı (Vadeli)',
+              CurrencyFormatter.format(property.vatAmountInstallment!),
+            ),
+          ]
+      ],
+    );
+  }
+// **** YENİ WIDGET SONU ****
+
 } // Sınıf sonu

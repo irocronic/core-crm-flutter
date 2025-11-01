@@ -16,7 +16,8 @@ class ProjectInfo {
 
   factory ProjectInfo.fromJson(Map<String, dynamic> json) =>
       _$ProjectInfoFromJson(json);
-  Map<String, dynamic> toJson() => _$ProjectInfoToJson(this);
+  Map<String,
+      dynamic> toJson() => _$ProjectInfoToJson(this);
 }
 
 @JsonSerializable()
@@ -92,6 +93,7 @@ class PropertyModel {
   final String? facadeDisplay;
 
   @JsonKey(name: 'property_type')
+
   final String propertyType;
 
   @JsonKey(name: 'property_type_display')
@@ -142,6 +144,23 @@ class PropertyModel {
   @JsonKey(name: 'payment_plans', defaultValue: [])
   final List<PaymentPlanModel> paymentPlans;
 
+  // **** YENİ KDV ALANLARI BAŞLANGIÇ ****
+  @JsonKey(name: 'vat_rate')
+  final double vatRate;
+
+  @JsonKey(name: 'cash_price_with_vat')
+  final double cashPriceWithVat;
+
+  @JsonKey(name: 'installment_price_with_vat')
+  final double? installmentPriceWithVat;
+
+  @JsonKey(name: 'vat_amount_cash')
+  final double vatAmountCash;
+
+  @JsonKey(name: 'vat_amount_installment')
+  final double? vatAmountInstallment;
+  // **** YENİ KDV ALANLARI SON ****
+
   PropertyModel({
     required this.id,
     required this.project,
@@ -159,6 +178,7 @@ class PropertyModel {
     required this.netAreaM2,
     required this.cashPrice,
     this.installmentPrice,
+
     required this.status,
     this.statusDisplay,
     this.description,
@@ -170,6 +190,13 @@ class PropertyModel {
     required this.images,
     required this.documents,
     required this.paymentPlans,
+    // **** YENİ KDV ALANLARI BAŞLANGIÇ ****
+    required this.vatRate,
+    required this.cashPriceWithVat,
+    this.installmentPriceWithVat,
+    required this.vatAmountCash,
+    this.vatAmountInstallment,
+    // **** YENİ KDV ALANLARI SON ****
   });
 
   factory PropertyModel.fromJson(Map<String, dynamic> json) => _$PropertyModelFromJson(json);

@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart'; // <-- YENİ: Görsel seçimi için eklendi
 import 'dart:io'; // <-- YENİ: Dosya işlemleri için eklendi
 import 'package:flutter/foundation.dart' show kIsWeb; // <-- YENİ: Web platformu kontrolü için eklendi
+// **** YENİ ALAN ****
+import 'package:flutter/services.dart'; // Sayısal formatlama için eklendi
 
 import '../../../../core/utils/validators.dart';
 import '../providers/property_provider.dart';
@@ -41,6 +43,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   final _descriptionController = TextEditingController();
   final _islandController = TextEditingController();
   final _parcelController = TextEditingController();
+  // **** YENİ KDV CONTROLLER'I ****
+  final _vatRateController = TextEditingController(text: '20.0'); // Varsayılan KDV %20
 
   // Dropdown values
   int? _selectedProjectId;
@@ -103,6 +107,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           _selectedStatus = property.status;
           _selectedFacade = property.facade;
           _selectedRoomCount = property.roomCount;
+          // **** YENİ KDV ALANI YÜKLEME ****
+          _vatRateController.text = property.vatRate.toStringAsFixed(2);
           // GÜNCELLEME: _isLoadingData olarak değiştirildi
           _isLoadingData = false;
           // Mevcut görselleri forma eklemeyeceğiz, düzenleme ekranında ayrı yönetilebilir.
@@ -128,6 +134,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     _descriptionController.dispose();
     _islandController.dispose();
     _parcelController.dispose();
+    _vatRateController.dispose(); // **** YENİ CONTROLLER'I DISPOSE ET ****
     super.dispose();
   }
 
@@ -194,6 +201,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       'status': _selectedStatus,
       'facade': _selectedFacade,
       'room_count': _selectedRoomCount,
+      // **** YENİ KDV ALANI ****
+      'vat_rate': double.tryParse(_vatRateController.text.trim().replaceAll(',', '.')) ?? 20.0,
     };
 
     final provider = context.read<PropertyProvider>();
@@ -448,7 +457,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     child: TextFormField(
                       controller: _cashPriceController,
                       decoration: const InputDecoration(
-                          labelText: 'Peşin Fiyat (₺) *',
+                          labelText: 'Peşin Fiyat (KDV Hariç) *',
                           suffixText: '₺'),
                       keyboardType: TextInputType.number,
                       validator: (value) => Validators.numeric(value,
@@ -460,7 +469,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     child: TextFormField(
                       controller: _installmentPriceController,
                       decoration: const InputDecoration(
-                          labelText: 'Vadeli Fiyat (₺)', suffixText: '₺'),
+                          labelText: 'Vadeli Fiyat (KDV Hariç)', suffixText: '₺'),
                       keyboardType: TextInputType.number,
                       // Vadeli fiyat zorunlu değilse validator kaldırılabilir
                       // validator: (value) => ...
@@ -468,6 +477,33 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                   ),
                 ],
               ),
+
+              // **** YENİ ALAN: KDV ORANI ****
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _vatRateController,
+                decoration: const InputDecoration(
+                  labelText: 'KDV Oranı (%) *',
+                  prefixIcon: Icon(Icons.percent),
+                  suffixText: '%',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[\,\.]?\d*')),
+                ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'KDV Oranı boş bırakılamaz';
+                  }
+                  final rate = double.tryParse(value.replaceAll(',', '.'));
+                  if (rate == null || rate < 0 || rate > 100) {
+                    return 'Geçerli bir oran girin (0-100)';
+                  }
+                  return null;
+                },
+              ),
+              // **** YENİ ALAN SONU ****
+
               const SizedBox(height: 16),
               // Property Type and Facade
               Row(
